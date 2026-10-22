@@ -1,0 +1,35 @@
+version: '3.9'
+
+services:
+  backend:
+    build:
+      context: ../03_BACKEND
+      dockerfile: Dockerfile
+    container_name: erp_backend_prod
+    restart: always
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - SECRET_KEY=${SECRET_KEY}
+      - USE_S3_STORAGE=true
+      - AWS_REGION=${AWS_REGION:-us-east-1}
+      - AWS_S3_BUCKET=${AWS_S3_BUCKET}
+    networks:
+      - erp_prod_net
+
+  frontend:
+    build:
+      context: ../02_FRONTEND
+      dockerfile: Dockerfile
+    container_name: erp_frontend_prod
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      - backend
+    networks:
+      - erp_prod_net
+
+networks:
+  erp_prod_net:
+    driver: bridge

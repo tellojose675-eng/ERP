@@ -1,0 +1,72 @@
+version: '3.9'
+
+services:
+  # Backend FastAPI
+  backend:
+    build:
+      context: ./03_BACKEND
+      dockerfile: Dockerfile
+    container_name: erp_backend
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=${DATABASE_URL:-sqlite:///./erp_enterprisecloud.db}
+      - SECRET_KEY=${SECRET_KEY:-erp_secret_key_2026_cloud}
+      - USE_S3_STORAGE=${USE_S3_STORAGE:-false}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID:-}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY:-}
+      - AWS_REGION=${AWS_REGION:-us-east-1}
+      - AWS_S3_BUCKET=${AWS_S3_BUCKET:-erp-enterprisecloud-documents}
+    volumes:
+      - backend_uploads:/app/uploads
+    networks:
+      - erp_network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Frontend React con Nginx
+  frontend:
+    build:
+      context: ./02_FRONTEND
+      dockerfile: Dockerfile
+    container_name: erp_frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - erp_network
+    restart: unless-stopped
+
+  # Base de Datos PostgreSQL (para ambiente local con Docker)
+  postgres:
+    image: postgres:16-alpine
+    container_name: erp_postgres
+    environment:
+      - POSTGRES_USER=erpadmin
+      - POSTGRES_PASSWORD=EnterpriseCloud2026!
+      - POSTGRES_DB=erp_enterprisecloud
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./04_DATABASE/postgres_schema.sql:/docker-entrypoint-initdb.d/01_schema.sql
+    ports:
+      - "5432:5432"
+    networks:
+      - erp_network
+    restart: unless-stopped
+    profiles:
+      - full-stack
+
+volumes:
+  postgres_data:
+    driver: local
+  backend_uploads:
+    driver: local
+
+networks:
+  erp_network:
+    driver: bridge
