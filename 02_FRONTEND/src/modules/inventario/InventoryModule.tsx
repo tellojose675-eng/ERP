@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Boxes, Plus, ArrowLeftRight, Sliders, History, Search, Download, Filter, CheckCircle2 } from 'lucide-react';
+import { Boxes, Plus, ArrowLeftRight, Sliders, History, Search, Download, Filter, CheckCircle2, PlusCircle, Loader2, X } from 'lucide-react';
 import { api } from '../../services/api';
 import { Product, Warehouse, InventoryItem, InventoryMovement, Category } from '../../types';
 import { Modal } from '../../components/Modal';
@@ -41,6 +41,14 @@ export const InventoryModule: React.FC = () => {
   const [toWhId, setToWhId] = useState<number>(2);
   const [transQty, setTransQty] = useState<number>(5);
 
+  // Quick stock modal
+  const [quickProduct, setQuickProduct] = useState<{ id: number; name: string; code: string } | null>(null);
+  const [quickQty, setQuickQty] = useState<number>(10);
+  const [quickWhId, setQuickWhId] = useState<number>(0);
+  const [quickNotes, setQuickNotes] = useState<string>('');
+  const [quickLoading, setQuickLoading] = useState(false);
+  const [quickSuccess, setQuickSuccess] = useState(false);
+
   const loadAll = async () => {
     try {
       setLoading(true);
@@ -61,6 +69,7 @@ export const InventoryModule: React.FC = () => {
         setTransProductId(prods[0].id);
       }
       if (cats.length > 0) setNewCategoryId(cats[0].id);
+      if (whs.length > 0) setQuickWhId(whs[0].id);
     } catch (err) {
       console.error(err);
     } finally {
@@ -97,6 +106,32 @@ export const InventoryModule: React.FC = () => {
       loadAll();
     } catch (err: any) {
       alert(err.message || 'Error al registrar producto');
+    }
+  };
+
+  const handleQuickStock = async () => {
+    if (!quickProduct || quickQty <= 0 || !quickWhId) return;
+    setQuickLoading(true);
+    try {
+      await api.adjustStock({
+        product_id: quickProduct.id,
+        warehouse_id: quickWhId,
+        movement_type: 'ENTRADA',
+        quantity: quickQty,
+        notes: quickNotes || `Ingreso rápido — ${quickProduct.name}`,
+      });
+      setQuickSuccess(true);
+      setTimeout(() => {
+        setQuickProduct(null);
+        setQuickSuccess(false);
+        setQuickQty(10);
+        setQuickNotes('');
+        loadAll();
+      }, 1200);
+    } catch (err: any) {
+      alert(err.message || 'Error al ajustar stock');
+    } finally {
+      setQuickLoading(false);
     }
   };
 
@@ -305,6 +340,7 @@ export const InventoryModule: React.FC = () => {
                     <th className="py-3.5 px-4 text-center">Stock Mín.</th>
                     <th className="py-3.5 px-4 text-center">Stock Global</th>
                     <th className="py-3.5 px-4 text-center">Estado</th>
+                    <th className="py-3.5 px-4 text-center">Acción</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -328,6 +364,22 @@ export const InventoryModule: React.FC = () => {
                         </td>
                         <td className="py-3 px-4 text-center">
                           <StockStatusBadge stock={p.total_stock || 0} />
+                        </td>
+                        <td className="py-3 px-4 text-center">
+                          <button
+                            onClick={() => {
+                              setQuickProduct({ id: p.id, name: p.name, code: p.code });
+                              setQuickQty(10);
+                              setQuickNotes('');
+                              setQuickSuccess(false);
+                              if (warehouses.length > 0) setQuickWhId(warehouses[0].id);
+                            }}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:hover:bg-emerald-950/70 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 rounded-lg text-[10px] font-bold transition-colors cursor-pointer"
+                            title="Ingresar stock rápido"
+                          >
+                            <PlusCircle className="w-3 h-3" />
+                            Stock
+                          </button>
                         </td>
                       </tr>
                     );
@@ -667,6 +719,92 @@ export const InventoryModule: React.FC = () => {
           </div>
         </form>
       </Modal>
+
+      {/* ── Quick Stock Modal ── */}
+      {quickProduct && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 w-full max-w-sm p-6 animate-in zoom-in-95 duration-200">
+
+            <div className="flex items-start justify-between mb-4">
+              <div>
+                <h3 className="text-sm font-extrabold text-slate-900 dark:text-white">Ingresar Stock</h3>
+                <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-bold mt-0.5 font-mono">{quickProduct.code}</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 truncate max-w-[220px]">{quickProduct.name}</p>
+              </div>
+              <button
+                onClick={() => setQuickProduct(null)}
+                className="w-7 h-7 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 flex items-center justify-center cursor-pointer transition-colors"
+              >
+                <X className="w-4 h-4 text-slate-500" />
+              </button>
+            </div>
+
+            {quickSuccess ? (
+              <div className="flex flex-col items-center justify-center py-6 gap-3">
+                <div className="w-12 h-12 rounded-full bg-emerald-100 dark:bg-emerald-950/60 flex items-center justify-center">
+                  <CheckCircle2 className="w-7 h-7 text-emerald-600" />
+                </div>
+                <p className="text-sm font-bold text-emerald-700 dark:text-emerald-400">¡Stock ingresado!</p>
+                <p className="text-xs text-slate-400">+{quickQty} unidades registradas</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Almacén destino</label>
+                  <select
+                    value={quickWhId}
+                    onChange={e => setQuickWhId(Number(e.target.value))}
+                    className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  >
+                    {warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Cantidad a ingresar</label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={quickQty}
+                    onChange={e => setQuickQty(Math.max(1, Number(e.target.value)))}
+                    className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-center focus:outline-none focus:ring-2 focus:ring-emerald-500 font-mono"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Motivo (opcional)</label>
+                  <input
+                    type="text"
+                    placeholder="ej: Reposición de stock"
+                    value={quickNotes}
+                    onChange={e => setQuickNotes(e.target.value)}
+                    className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                </div>
+
+                <div className="flex gap-2 pt-1">
+                  <button
+                    onClick={() => setQuickProduct(null)}
+                    className="flex-1 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 text-slate-700 dark:text-slate-300 text-xs font-semibold cursor-pointer transition-all"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={handleQuickStock}
+                    disabled={quickLoading || quickQty <= 0}
+                    className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white text-xs font-bold shadow-lg shadow-emerald-600/30 cursor-pointer transition-all"
+                  >
+                    {quickLoading
+                      ? <><Loader2 className="w-4 h-4 animate-spin" />Guardando...</>
+                      : <><PlusCircle className="w-4 h-4" />Ingresar {quickQty} UND</>}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };
