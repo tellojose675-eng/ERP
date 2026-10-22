@@ -171,9 +171,8 @@ export const DashboardPage: React.FC = () => {
 
   const advanceProgress = (done: number) => setSimProgress(Math.round((done / STEP_DEFS.length) * 100));
 
-  // ── Simulation (inline, no modal) ──────────────────────────────────────────
+  // ── Simulation (inline, idempotent — reuses existing data) ────────────────
   const runSimulation = async () => {
-    // Reset state
     setSimSteps(STEP_DEFS.map(s => ({ ...s, status: 'pending' })));
     setSimProgress(0);
     setSimVisible(true);
@@ -181,36 +180,57 @@ export const DashboardPage: React.FC = () => {
 
     let done = 0;
 
+    // Helper: try to create, if it already exists fetch existing list and find by key
+    const upsertCategory = async (cat: any): Promise<number> => {
+      try { return (await api.createCategory(cat)).id; }
+      catch { const all = await api.getCategories(); const f = all.find((c: any) => c.name === cat.name); return f?.id || 0; }
+    };
+    const upsertCustomer = async (c: any): Promise<number> => {
+      try { return (await api.createCustomer(c)).id; }
+      catch { const all = await api.getCustomers(); const f = all.find((x: any) => x.document_number === c.document_number); return f?.id || 0; }
+    };
+    const upsertSupplier = async (s: any): Promise<number> => {
+      try { return (await api.createSupplier(s)).id; }
+      catch { const all = await api.getSuppliers(); const f = all.find((x: any) => x.document_number === s.document_number); return f?.id || 0; }
+    };
+    const upsertWarehouse = async (w: any): Promise<number> => {
+      try { return (await api.createWarehouse(w)).id; }
+      catch { const all = await api.getWarehouses(); const f = all.find((x: any) => x.code === w.code); return f?.id || 0; }
+    };
+    const upsertProduct = async (p: any): Promise<number> => {
+      try { return (await api.createProduct(p)).id; }
+      catch { const all = await api.getProducts(); const f = all.find((x: any) => x.code === p.code); return f?.id || 0; }
+    };
+
     try {
       // 1 · Categories
       markStep('categories', 'running');
       await delay(300);
       const catIds: number[] = [];
-      for (const cat of SIM_CATEGORIES) { const r = await api.createCategory(cat); catIds.push(r.id); }
+      for (const cat of SIM_CATEGORIES) { catIds.push(await upsertCategory(cat)); }
       markStep('categories', 'done'); advanceProgress(++done); await delay(200);
 
       // 2 · Customers
       markStep('customers', 'running');
       const customerIds: number[] = [];
-      for (const c of SIM_CUSTOMERS) { const r = await api.createCustomer(c); customerIds.push(r.id); }
+      for (const c of SIM_CUSTOMERS) { customerIds.push(await upsertCustomer(c)); }
       markStep('customers', 'done'); advanceProgress(++done); await delay(200);
 
       // 3 · Suppliers
       markStep('suppliers', 'running');
       const supplierIds: number[] = [];
-      for (const s of SIM_SUPPLIERS) { const r = await api.createSupplier(s); supplierIds.push(r.id); }
+      for (const s of SIM_SUPPLIERS) { supplierIds.push(await upsertSupplier(s)); }
       markStep('suppliers', 'done'); advanceProgress(++done); await delay(200);
 
       // 4 · Warehouse
       markStep('warehouse', 'running');
-      const wh = await api.createWarehouse(SIM_WAREHOUSE);
-      const whId: number = wh.id;
+      const whId: number = await upsertWarehouse(SIM_WAREHOUSE);
       markStep('warehouse', 'done'); advanceProgress(++done); await delay(200);
 
       // 5 · Products
       markStep('products', 'running');
       const prodIds: number[] = [];
-      for (const p of buildProducts(catIds)) { const r = await api.createProduct(p); prodIds.push(r.id); }
+      for (const p of buildProducts(catIds)) { prodIds.push(await upsertProduct(p)); }
       markStep('products', 'done'); advanceProgress(++done); await delay(200);
 
       // 6 · Purchases
