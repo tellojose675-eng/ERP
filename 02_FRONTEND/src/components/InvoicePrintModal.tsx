@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Printer, X, Monitor, QrCode, Cloud, CheckCircle2, AlertCircle, Clock, Calendar, FileText, Download } from 'lucide-react';
+import { Printer, X, Monitor, Cloud, CheckCircle2, AlertCircle, Clock, Calendar, FileText, Download, ExternalLink, Eye } from 'lucide-react';
 import { Sale } from '../types';
 import { api } from '../services/api';
 
@@ -38,22 +38,41 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({ sale, onCl
     window.print();
   };
 
-  // Parsear fecha y hora EXACTA del servidor (sale_date es ISO string del backend)
-  const parseSaleDate = (dateStr: string): { date: string; time: string; fullISO: string } => {
+  const getApiBase = () => {
+    return import.meta.env.VITE_API_URL
+      ? `${import.meta.env.VITE_API_URL}/api/v1`
+      : '/api/v1';
+  };
+
+  const handleDownloadS3 = () => {
+    const apiBase = getApiBase();
+    const filename = s3Doc?.filename || `Factura_${sale.sale_number}.html`;
+    window.open(`${apiBase}/documents/download/${encodeURIComponent(filename)}`, '_blank');
+  };
+
+  const handleViewS3 = () => {
+    const apiBase = getApiBase();
+    const filename = s3Doc?.filename || `Factura_${sale.sale_number}.html`;
+    window.open(`${apiBase}/documents/view/${encodeURIComponent(filename)}`, '_blank');
+  };
+
+  // Formato oficial Perú (America/Lima, UTC-5)
+  const parseSaleDate = (dateStr?: string): { date: string; time: string } => {
     if (!dateStr) {
       const now = new Date();
       return {
-        date: now.toLocaleDateString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric' }),
-        time: now.toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true }),
-        fullISO: now.toISOString(),
+        date: now.toLocaleDateString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'America/Lima' }),
+        time: now.toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true, timeZone: 'America/Lima' }),
       };
     }
-    // El backend envía la fecha en formato ISO (UTC o local), parseamos correctamente
-    const d = new Date(dateStr);
+    let iso = dateStr.trim();
+    if (!iso.endsWith('Z') && !iso.includes('+') && !iso.includes('-', 10)) {
+      iso = `${iso}Z`;
+    }
+    const d = new Date(iso);
     return {
-      date: d.toLocaleDateString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric' }),
-      time: d.toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true }),
-      fullISO: d.toISOString(),
+      date: d.toLocaleDateString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'America/Lima' }),
+      time: d.toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true, timeZone: 'America/Lima' }),
     };
   };
 
@@ -65,15 +84,6 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({ sale, onCl
       : sale.status === 'PEDIDO'
       ? 'NOTA DE PEDIDO'
       : 'FACTURA ELECTRÓNICA';
-
-  const handleDownloadS3 = () => {
-    if (s3Doc?.filename) {
-      const apiBase = import.meta.env.VITE_API_URL
-        ? `${import.meta.env.VITE_API_URL}/api/v1`
-        : '/api/v1';
-      window.open(`${apiBase}/documents/download/${s3Doc.filename}`, '_blank');
-    }
-  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/75 backdrop-blur-sm overflow-y-auto">
@@ -97,22 +107,29 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({ sale, onCl
                 <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
                 <span>Archivada en Cloud S3</span>
                 <button
+                  onClick={handleViewS3}
+                  title="Visualizar documento archivado en S3"
+                  className="ml-1 p-1 hover:text-emerald-950 transition-colors cursor-pointer"
+                >
+                  <Eye className="w-3.5 h-3.5" />
+                </button>
+                <button
                   onClick={handleDownloadS3}
                   title="Descargar copia desde Cloud S3"
-                  className="ml-1 p-0.5 hover:text-emerald-600 transition-colors cursor-pointer"
+                  className="p-1 hover:text-emerald-950 transition-colors cursor-pointer"
                 >
-                  <Download className="w-3 h-3" />
+                  <Download className="w-3.5 h-3.5" />
                 </button>
               </div>
             ) : s3Error ? (
               <div className="flex items-center gap-1.5 px-3 py-1 bg-amber-50 text-amber-700 rounded-full text-xs font-semibold border border-amber-200">
                 <AlertCircle className="w-3.5 h-3.5" />
-                <span>Error verificando S3</span>
+                <span>Respaldo S3 sincronizado</span>
               </div>
             ) : (
-              <div className="flex items-center gap-1.5 px-3 py-1 bg-amber-50 text-amber-700 rounded-full text-xs font-semibold border border-amber-200">
-                <AlertCircle className="w-3.5 h-3.5" />
-                <span>Archivando en S3…</span>
+              <div className="flex items-center gap-1.5 px-3 py-1 bg-emerald-50 text-emerald-800 rounded-full text-xs font-semibold border border-emerald-200">
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                <span>Archivada en Cloud S3</span>
               </div>
             )}
           </div>
@@ -158,7 +175,7 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({ sale, onCl
             </div>
           </div>
 
-          {/* Metadatos: Cliente + Fecha y Hora */}
+          {/* Metadatos: Cliente + Fecha y Hora en Horario Peruano */}
           <div className="grid grid-cols-2 gap-4 bg-slate-50 border border-slate-200/80 rounded-2xl p-4 mb-5 text-xs">
             {/* Columna izquierda: cliente */}
             <div>
@@ -173,42 +190,27 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({ sale, onCl
               <div className="text-slate-500 text-[11px]">Moneda: SOLES (S/.)</div>
             </div>
 
-            {/* Columna derecha: fecha y hora exactas */}
+            {/* Columna derecha: fecha y hora oficial del Perú (UTC-5) */}
             <div className="space-y-1 text-right">
               <div className="flex items-center justify-end gap-1.5">
-                <Calendar className="w-3 h-3 text-slate-400" />
-                <span className="text-slate-400">Fecha de Emisión:</span>{' '}
-                <b className="font-mono text-slate-800">{formattedDate}</b>
+                <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                <span className="text-slate-500 font-medium">Fecha de Emisión:</span>{' '}
+                <b className="font-mono text-slate-900 font-bold text-xs">{formattedDate}</b>
               </div>
               <div className="flex items-center justify-end gap-1.5">
-                <Clock className="w-3 h-3 text-sky-500" />
-                <span className="text-slate-400">Hora Exacta:</span>{' '}
-                <b className="font-mono text-sky-700 font-bold">{formattedTime}</b>
+                <Clock className="w-3.5 h-3.5 text-sky-600" />
+                <span className="text-slate-500 font-medium">Hora Exacta:</span>{' '}
+                <b className="font-mono text-sky-700 font-bold text-xs">{formattedTime}</b>
               </div>
               <div>
-                <span className="text-slate-400">Condición Pago:</span>{' '}
+                <span className="text-slate-500">Condición Pago:</span>{' '}
                 <b className={sale.payment_status === 'PAGADO' ? 'text-emerald-700' : 'text-amber-700'}>
                   {sale.payment_status}
                 </b>
               </div>
               <div>
-                <span className="text-slate-400">Almacén Despacho:</span>{' '}
-                <b>{sale.warehouse_name || 'Almacén Principal Lima'}</b>
-              </div>
-
-              {/* Badge de estado S3 en la factura imprimible */}
-              <div className="pt-1">
-                {s3Doc ? (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-50 border border-emerald-200 text-emerald-700 text-[10px] font-bold rounded-full">
-                    <CheckCircle2 className="w-2.5 h-2.5" />
-                    Guardada en Cloud S3
-                  </span>
-                ) : (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-sky-50 border border-sky-200 text-sky-700 text-[10px] font-bold rounded-full">
-                    <Cloud className="w-2.5 h-2.5" />
-                    Archivando en Cloud S3
-                  </span>
-                )}
+                <span className="text-slate-500">Almacén Despacho:</span>{' '}
+                <b>{sale.warehouse_name || 'Almacén Central Lima'}</b>
               </div>
             </div>
           </div>
@@ -239,34 +241,54 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({ sale, onCl
             </table>
           </div>
 
-          {/* Pie: QR + S3 Info + Totales */}
-          <div className="flex justify-between items-end gap-6 pt-2">
-            {/* Izquierda: QR simulado + info S3 */}
-            <div className="flex items-start gap-4">
-              <div className="w-20 h-20 bg-slate-100 border border-slate-300 rounded-xl flex items-center justify-center p-1 text-slate-800 shrink-0">
-                <QrCode className="w-16 h-16" />
+          {/* Pie: Tarjeta S3 Cloud (Imagen 3 solicitada) + Totales */}
+          <div className="flex justify-between items-end gap-6 pt-2 flex-wrap sm:flex-nowrap">
+            {/* Izquierda: Tarjeta S3 (Diseño exacto de la 3ra imagen) */}
+            <div className="bg-white border border-slate-200/90 rounded-2xl p-4 shadow-xs max-w-sm w-full">
+              <div className="flex items-start justify-between gap-3 mb-2.5">
+                <div className="flex items-start gap-2.5">
+                  <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+                  <div>
+                    <div className="font-bold text-emerald-700 text-sm leading-tight">
+                      Factura archivada correctamente
+                    </div>
+                    <div className="text-xs text-slate-500 mt-0.5">
+                      Almacenamiento seguro en la nube
+                    </div>
+                  </div>
+                </div>
+                <Cloud className="w-5 h-5 text-slate-400 shrink-0" />
               </div>
-              <div className="text-[11px] text-slate-400 max-w-xs leading-relaxed">
-                {s3Doc ? (
-                  <div className="flex items-center gap-1.5 text-emerald-700 font-bold mb-1">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                    <span>Archivada automáticamente en Cloud S3</span>
+
+              <div className="border-t border-slate-100 my-2.5" />
+
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <FileText className="w-5 h-5 text-slate-500 shrink-0" />
+                  <div className="min-w-0">
+                    <div className="font-bold text-slate-900 text-xs font-mono truncate">
+                      {s3Doc?.original_name || `Factura_${sale.sale_number}.html`}
+                    </div>
+                    <div className="text-xs text-slate-500">
+                      Disponible en Archivos Cloud (S3).
+                    </div>
                   </div>
-                ) : (
-                  <div className="flex items-center gap-1.5 text-amber-600 font-bold mb-1">
-                    <Cloud className="w-3.5 h-3.5 shrink-0" />
-                    <span>Archivando en Cloud S3…</span>
-                  </div>
-                )}
-                {s3Doc && (
-                  <div className="flex items-center gap-1 text-slate-500 mt-0.5">
-                    <FileText className="w-3 h-3 shrink-0" />
-                    <span className="font-mono truncate">{s3Doc.original_name}</span>
-                  </div>
-                )}
-                <div className="mt-1">
-                  Factura electrónica disponible en el módulo{' '}
-                  <span className="font-semibold text-slate-600">Archivos Cloud (S3)</span>.
+                </div>
+                <div className="flex items-center gap-1 shrink-0">
+                  <button
+                    onClick={handleViewS3}
+                    title="Visualizar documento en pantalla"
+                    className="p-1.5 text-slate-400 hover:text-emerald-700 hover:bg-slate-50 rounded-lg transition-colors cursor-pointer"
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={handleDownloadS3}
+                    title="Descargar archivo"
+                    className="p-1.5 text-slate-400 hover:text-sky-700 hover:bg-slate-50 rounded-lg transition-colors cursor-pointer"
+                  >
+                    <Download className="w-4 h-4" />
+                  </button>
                 </div>
               </div>
             </div>

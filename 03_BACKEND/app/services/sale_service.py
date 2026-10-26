@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from sqlalchemy.orm import Session
 from fastapi import HTTPException
 from app.models.models import Sale, SaleDetail, Customer, Product, Document
@@ -8,17 +8,30 @@ from app.services.inventory_service import modify_stock
 from app.services.audit_service import log_activity
 from app.core.s3_client import s3_service
 
+# Zona Horaria Oficial del Perú (UTC-5)
+PERU_TZ = timezone(timedelta(hours=-5))
+
+def get_peru_time(dt: datetime = None) -> datetime:
+    """Convierte cualquier fecha o la hora actual a Zona Horaria de Perú (UTC-5)."""
+    if dt is None:
+        return datetime.now(PERU_TZ)
+    if hasattr(dt, 'tzinfo') and dt.tzinfo is None:
+        # Los servidores en la nube (Render) almacenan en UTC naive
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(PERU_TZ)
+
 def generate_sale_number(db: Session) -> str:
     count = db.query(Sale).count() + 1
-    return f"VTA-{datetime.now().year}-{count:04d}"
+    peru_now = get_peru_time()
+    return f"VTA-{peru_now.year}-{count:04d}"
 
 def generate_invoice_html(sale: Sale) -> str:
     cust_name = sale.customer.name if sale.customer else "Cliente General"
     cust_doc = f"{sale.customer.document_type}: {sale.customer.document_number}" if sale.customer and sale.customer.document_number else "Documento: Registrado"
     cust_addr = sale.customer.address if sale.customer and sale.customer.address else "Av. Central 123, Lima - Perú"
     
-    # Formato de fecha y hora exacta
-    date_val = sale.sale_date or datetime.now()
+    # Formato de fecha y hora exacta en Horario de Perú (UTC-5)
+    date_val = get_peru_time(sale.sale_date)
     issue_date_str = date_val.strftime("%d/%m/%Y")
     issue_time_str = date_val.strftime("%I:%M:%S %p")
     wh_name = sale.warehouse.name if hasattr(sale, 'warehouse') and sale.warehouse else "Almacén Principal Lima"
@@ -118,10 +131,27 @@ def generate_invoice_html(sale: Sale) -> str:
   </table>
 
   <div class="footer-flex">
-    <div>
-      <div class="s3-badge">☁️ Archivado Automáticamente en Amazon S3</div>
-      <div style="font-size: 11px; color: #94a3b8; margin-top: 8px; max-width: 380px;">
-        Representación digital de la Factura Electrónica. Respaldo elástico consultable en el módulo de Archivos Cloud (S3).
+    <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; padding: 14px 18px; max-width: 380px; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
+      <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+        <div style="display: flex; align-items: flex-start; gap: 8px;">
+          <div style="color: #059669; font-size: 16px; line-height: 1; font-weight: bold;">✔</div>
+          <div>
+            <div style="font-size: 13px; font-weight: 700; color: #047857; line-height: 1.2;">Factura archivada correctamente</div>
+            <div style="font-size: 11px; color: #64748b; margin-top: 2px;">Almacenamiento seguro en la nube</div>
+          </div>
+        </div>
+        <div style="color: #64748b; font-size: 16px;">☁</div>
+      </div>
+      <div style="height: 1px; background: #f1f5f9; margin: 10px 0;"></div>
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <div style="color: #475569; font-size: 15px;">📄</div>
+          <div>
+            <div style="font-size: 12px; font-weight: 700; color: #0f172a; font-family: monospace;">Factura_{sale.sale_number}.html</div>
+            <div style="font-size: 11px; color: #64748b; margin-top: 1px;">Disponible en Archivos Cloud (S3).</div>
+          </div>
+        </div>
+        <div style="color: #64748b; font-size: 14px;">↗</div>
       </div>
     </div>
     <div class="totals-box">
@@ -207,7 +237,7 @@ def create_sale(db: Session, sale_in: SaleCreate, user_id: int, username: str) -
         })
     
     total = round(subtotal + tax_total, 2)
-    current_time = datetime.now()
+    current_time = get_peru_time()
     
     sale = Sale(
         sale_number=sale_number,

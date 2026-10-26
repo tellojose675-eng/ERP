@@ -4,7 +4,7 @@ from typing import List
 from app.core.database import get_db
 from app.models.models import Sale, SaleDetail, User, Customer
 from app.schemas.schemas import SaleCreate, SaleOut
-from app.services.sale_service import create_sale
+from app.services.sale_service import create_sale, get_peru_time
 from app.services.inventory_service import modify_stock
 from app.security.deps import get_current_user
 from app.services.audit_service import log_activity
@@ -38,7 +38,7 @@ def list_sales(db: Session = Depends(get_db)):
             "customer_address": s.customer.address if s.customer else "",
             "warehouse_id": s.warehouse_id,
             "warehouse_name": s.warehouse.name if getattr(s, 'warehouse', None) else "Almacén Central Lima",
-            "sale_date": s.sale_date.isoformat() if hasattr(s.sale_date, 'isoformat') else str(s.sale_date),
+            "sale_date": get_peru_time(s.sale_date).isoformat() if s.sale_date else get_peru_time().isoformat(),
             "status": s.status,
             "subtotal": s.subtotal,
             "tax": s.tax,
@@ -86,7 +86,7 @@ def register_sale(
         "customer_address": sale.customer.address if sale.customer else "",
         "warehouse_id": sale.warehouse_id,
         "warehouse_name": sale.warehouse.name if getattr(sale, 'warehouse', None) else "Almacén Central Lima",
-        "sale_date": sale.sale_date.isoformat() if hasattr(sale.sale_date, 'isoformat') else str(sale.sale_date),
+        "sale_date": get_peru_time(sale.sale_date).isoformat() if sale.sale_date else get_peru_time().isoformat(),
         "status": sale.status,
         "subtotal": sale.subtotal,
         "tax": sale.tax,

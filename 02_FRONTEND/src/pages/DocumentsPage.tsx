@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { HardDrive, Upload, Download, FileText, CheckCircle2, Shield, Search, Trash2 } from 'lucide-react';
+import { HardDrive, Upload, Download, FileText, CheckCircle2, Shield, Search, Trash2, Eye } from 'lucide-react';
 import { api } from '../services/api';
 import { DocumentItem } from '../types';
 import { Modal } from '../components/Modal';
@@ -13,6 +13,30 @@ export const DocumentsPage: React.FC = () => {
   const [entityId, setEntityId] = useState<number>(1);
   const [searchTerm, setSearchTerm] = useState('');
   const [deletingId, setDeletingId] = useState<number | null>(null);
+
+  const getApiBase = () => {
+    return import.meta.env.VITE_API_URL
+      ? `${import.meta.env.VITE_API_URL}/api/v1`
+      : '/api/v1';
+  };
+
+  const handleDownload = (doc: DocumentItem) => {
+    const base = getApiBase();
+    const target = doc.filename || doc.original_name;
+    const url = doc.file_url && doc.file_url.startsWith('https://') && doc.file_url.includes('.amazonaws.com/')
+      ? doc.file_url
+      : `${base}/documents/download/${encodeURIComponent(target)}`;
+    window.open(url, '_blank');
+  };
+
+  const handleView = (doc: DocumentItem) => {
+    const base = getApiBase();
+    const target = doc.filename || doc.original_name;
+    const url = doc.file_url && doc.file_url.startsWith('https://') && doc.file_url.includes('.amazonaws.com/')
+      ? doc.file_url
+      : `${base}/documents/view/${encodeURIComponent(target)}`;
+    window.open(url, '_blank');
+  };
 
   const loadDocuments = async () => {
     try {
@@ -133,7 +157,7 @@ export const DocumentsPage: React.FC = () => {
               <th className="py-3.5 px-4">Módulo Vinculado</th>
               <th className="py-3.5 px-4">Bucket S3</th>
               <th className="py-3.5 px-4">Tamaño</th>
-              <th className="py-3.5 px-4">Fecha Subida</th>
+              <th className="py-3.5 px-4">Fecha Subida (Perú)</th>
               <th className="py-3.5 px-4 text-center">Acciones</th>
             </tr>
           </thead>
@@ -148,8 +172,8 @@ export const DocumentsPage: React.FC = () => {
               filtered.map((d) => (
                 <tr key={d.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40">
                   <td className="py-3 px-4 flex items-center gap-2 font-medium text-slate-800 dark:text-slate-200">
-                    <FileText className="w-4 h-4 text-amber-600 dark:text-amber-400" />
-                    <span>{d.original_name}</span>
+                    <FileText className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
+                    <span className="font-mono text-xs">{d.original_name}</span>
                   </td>
                   <td className="py-3 px-4">
                     <span className="px-2 py-0.5 rounded-lg text-[10px] font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
@@ -160,22 +184,32 @@ export const DocumentsPage: React.FC = () => {
                   <td className="py-3 px-4 font-mono text-slate-500 dark:text-slate-400">
                     {d.file_size ? `${(d.file_size / 1024).toFixed(1)} KB` : 'N/A'}
                   </td>
-                  <td className="py-3 px-4 text-slate-500 dark:text-slate-400">{new Date(d.created_at).toLocaleString()}</td>
+                  <td className="py-3 px-4 text-slate-500 dark:text-slate-400 font-mono text-[11px]">
+                    {new Date(d.created_at).toLocaleDateString('es-PE', { timeZone: 'America/Lima', day: '2-digit', month: '2-digit', year: 'numeric' })}{' '}
+                    {new Date(d.created_at).toLocaleTimeString('es-PE', { timeZone: 'America/Lima', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })}
+                  </td>
                   <td className="py-3 px-4 text-center">
-                    <div className="flex items-center justify-center gap-2">
-                      <a
-                        href={d.file_url || `/api/v1/documents/download/${d.filename}`}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="inline-flex items-center gap-1 px-3 py-1 bg-sky-50 dark:bg-sky-950/40 text-sky-700 dark:text-sky-400 hover:bg-sky-100 dark:hover:bg-sky-900/60 font-semibold rounded-xl text-[11px] transition-colors border border-sky-200 dark:border-sky-800"
+                    <div className="flex items-center justify-center gap-1.5 flex-wrap">
+                      <button
+                        onClick={() => handleView(d)}
+                        className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 font-semibold rounded-xl text-[11px] transition-colors border border-emerald-200 dark:border-emerald-800 cursor-pointer shadow-xs"
+                        title="Visualizar documento en pantalla"
+                      >
+                        <Eye className="w-3.5 h-3.5" />
+                        <span>Visualizar</span>
+                      </button>
+                      <button
+                        onClick={() => handleDownload(d)}
+                        className="inline-flex items-center gap-1 px-2.5 py-1 bg-sky-50 dark:bg-sky-950/40 text-sky-700 dark:text-sky-400 hover:bg-sky-100 dark:hover:bg-sky-900/60 font-semibold rounded-xl text-[11px] transition-colors border border-sky-200 dark:border-sky-800 cursor-pointer shadow-xs"
+                        title="Descargar archivo a tu equipo"
                       >
                         <Download className="w-3.5 h-3.5" />
                         <span>Descargar</span>
-                      </a>
+                      </button>
                       <button
                         onClick={() => handleDelete(d.id, d.original_name)}
                         disabled={deletingId === d.id}
-                        className="inline-flex items-center gap-1 px-3 py-1 bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900/60 font-semibold rounded-xl text-[11px] transition-colors border border-rose-200 dark:border-rose-800 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="inline-flex items-center gap-1 px-2 py-1 bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900/60 font-semibold rounded-xl text-[11px] transition-colors border border-rose-200 dark:border-rose-800 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                         title="Eliminar documento"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
