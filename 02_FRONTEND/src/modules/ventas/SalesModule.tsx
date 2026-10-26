@@ -30,6 +30,7 @@ export const SalesModule: React.FC = () => {
     { product_id: 0, quantity: 1, unit_price: 0 }
   ]);
   const [stockWarning, setStockWarning] = useState<string | null>(null);
+  const [onlyWithStock, setOnlyWithStock] = useState<boolean>(true);
 
   const [warehouseStock, setWarehouseStock] = useState<any[]>([]);
 
@@ -56,11 +57,9 @@ export const SalesModule: React.FC = () => {
       setProducts(productsData);
       setWarehouses(warehousesData);
       if (customersData.length > 0 && customerId === 0) setCustomerId(customersData[0].id);
-      const initialWh = warehousesData.length > 0 ? warehousesData[0].id : 1;
-      if (warehouseId === 1 && warehousesData.length > 0) {
-        setWarehouseId(initialWh);
-        loadWarehouseStock(initialWh);
-      }
+      const initialWh = warehouseId || (warehousesData.length > 0 ? warehousesData[0].id : 1);
+      setWarehouseId(initialWh);
+      await loadWarehouseStock(initialWh);
     } catch (err) {
       console.error(err);
     } finally {
@@ -85,6 +84,13 @@ export const SalesModule: React.FC = () => {
     const stk = warehouseStock.find(s => s.product_id === pId);
     return stk ? stk.stock : 0;
   };
+
+  const productsWithStock = products
+    .filter(p => getAvailableStock(p.id) > 0)
+    .sort((a, b) => getAvailableStock(b.id) - getAvailableStock(a.id));
+
+  const productsWithoutStock = products
+    .filter(p => getAvailableStock(p.id) <= 0);
 
   const handleProductSelect = (index: number, pId: number) => {
     const prod = products.find(p => p.id === pId);
@@ -271,6 +277,7 @@ export const SalesModule: React.FC = () => {
           <button
             onClick={() => {
               setStockWarning(null);
+              if (warehouseId) loadWarehouseStock(warehouseId);
               setIsCreateOpen(true);
             }}
             className="flex items-center gap-2 px-4 py-2.5 bg-sky-600 hover:bg-sky-700 text-white font-semibold rounded-xl text-xs shadow-md shadow-sky-600/30 transition-all cursor-pointer"
@@ -474,21 +481,46 @@ export const SalesModule: React.FC = () => {
 
           {/* Tabla de Productos Múltiples */}
           <div className="border border-slate-200 dark:border-slate-700 rounded-2xl p-4 bg-slate-50/50 dark:bg-slate-800/40 space-y-3">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-2 border-b border-slate-200/80 dark:border-slate-700/60">
               <div>
-                <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                <span className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
                   Ítems de la Venta ({items.length} {items.length === 1 ? 'producto' : 'productos'})
+                  <span className="px-2 py-0.5 rounded-full text-[10px] bg-sky-100 text-sky-800 dark:bg-sky-950/60 dark:text-sky-300 font-bold">
+                    Almacén: {warehouses.find(w => w.id === warehouseId)?.name || 'Principal'}
+                  </span>
                 </span>
-                <p className="text-[11px] text-slate-400">Puedes despachar múltiples productos en el mismo comprobante.</p>
+                <p className="text-[11px] text-slate-400 mt-0.5">
+                  Los productos reflejan las existencias reales en el almacén de despacho seleccionado.
+                </p>
               </div>
-              <button
-                type="button"
-                onClick={addItemRow}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-sky-50 dark:bg-sky-950/60 text-sky-600 dark:text-sky-400 hover:bg-sky-100 dark:hover:bg-sky-900/60 border border-sky-200 dark:border-sky-800 text-xs font-bold transition-all cursor-pointer shadow-xs"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                <span>+ Agregar Otro Producto</span>
-              </button>
+
+              <div className="flex items-center gap-2 flex-wrap">
+                <button
+                  type="button"
+                  onClick={() => setOnlyWithStock(!onlyWithStock)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-bold transition-all cursor-pointer shadow-xs ${
+                    onlyWithStock
+                      ? 'bg-emerald-50 dark:bg-emerald-950/60 border-emerald-300 dark:border-emerald-700 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100'
+                      : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50'
+                  }`}
+                  title="Alternar entre ver solo productos disponibles o todo el catálogo"
+                >
+                  <span className={`w-2 h-2 rounded-full ${onlyWithStock ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'}`} />
+                  <span>{onlyWithStock ? 'Mostrando: Solo con Stock' : 'Mostrando: Todo el Catálogo'}</span>
+                  <span className="px-1.5 py-0.5 rounded-md bg-white/70 dark:bg-slate-900/70 text-[10px]">
+                    {onlyWithStock ? `${productsWithStock.length} disp.` : `${products.length} total`}
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={addItemRow}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-sky-50 dark:bg-sky-950/60 text-sky-600 dark:text-sky-400 hover:bg-sky-100 dark:hover:bg-sky-900/60 border border-sky-200 dark:border-sky-800 text-xs font-bold transition-all cursor-pointer shadow-xs"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>+ Agregar Otro</span>
+                </button>
+              </div>
             </div>
 
             <div className="space-y-2.5">
@@ -501,28 +533,106 @@ export const SalesModule: React.FC = () => {
                   <div key={idx} className="p-3 bg-white dark:bg-slate-800/90 rounded-2xl border border-slate-200/80 dark:border-slate-700 flex flex-col md:flex-row md:items-center gap-3">
                     {/* Selector Producto */}
                     <div className="flex-1">
-                      <label className="text-[10px] uppercase font-bold text-slate-400 mb-0.5 block">Producto #{idx + 1}</label>
+                      <div className="flex items-center justify-between mb-0.5">
+                        <label className="text-[10px] uppercase font-bold text-slate-400 block">
+                          Producto #{idx + 1}
+                        </label>
+                        <span className="text-[10px] font-medium text-slate-500 dark:text-slate-400">
+                          {onlyWithStock ? (
+                            <span className="text-emerald-600 dark:text-emerald-400 font-bold">
+                              ✓ {productsWithStock.length} disponibles con stock
+                            </span>
+                          ) : (
+                            <span>{productsWithStock.length} con stock · {productsWithoutStock.length} sin stock</span>
+                          )}
+                        </span>
+                      </div>
                       <select
                         required
                         value={item.product_id}
                         onChange={(e) => handleProductSelect(idx, Number(e.target.value))}
-                        className="w-full p-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-slate-100 font-medium"
+                        className={`w-full p-2 bg-slate-50 dark:bg-slate-900 border rounded-xl text-xs font-medium transition-colors ${
+                          isOutOfStock
+                            ? 'border-rose-400 dark:border-rose-600 text-rose-700 dark:text-rose-300 bg-rose-50/50'
+                            : 'border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-sky-500'
+                        }`}
                       >
-                        <option value={0}>-- Seleccionar Producto del Catálogo --</option>
-                        {products.map(p => (
-                          <option key={p.id} value={p.id}>
-                            {p.code} - {p.name} (S/. {p.sale_price})
+                        <option value={0}>
+                          {onlyWithStock
+                            ? `-- Seleccionar Producto con Stock (${productsWithStock.length} disponibles) --`
+                            : `-- Seleccionar Producto del Catálogo (${products.length} en total) --`}
+                        </option>
+
+                        {/* Mantener visible el ítem seleccionado si se desactiva el stock temporalmente para no desincronizar */}
+                        {onlyWithStock && item.product_id > 0 && !productsWithStock.some(p => p.id === item.product_id) && (
+                          <option value={item.product_id} className="text-rose-600 font-bold">
+                            🔴 [SIN STOCK] {products.find(p => p.id === item.product_id)?.code} - {products.find(p => p.id === item.product_id)?.name} (Agotado)
                           </option>
-                        ))}
+                        )}
+
+                        {onlyWithStock ? (
+                          productsWithStock.length > 0 ? (
+                            productsWithStock.map((p) => {
+                              const stk = getAvailableStock(p.id);
+                              return (
+                                <option key={p.id} value={p.id}>
+                                  🟢 [Stock: {stk} {p.unit || 'UND'}] {p.code} - {p.name} (S/. {Number(p.sale_price).toFixed(2)})
+                                </option>
+                              );
+                            })
+                          ) : (
+                            <option value={0} disabled>
+                              ⚠️ Sin productos con stock en este almacén. Cambie de almacén o presione "Mostrando: Todo el Catálogo".
+                            </option>
+                          )
+                        ) : (
+                          <>
+                            {productsWithStock.length > 0 && (
+                              <optgroup label={`✅ DISPONIBLES CON STOCK (${productsWithStock.length})`}>
+                                {productsWithStock.map((p) => {
+                                  const stk = getAvailableStock(p.id);
+                                  return (
+                                    <option key={p.id} value={p.id}>
+                                      🟢 [Stock: {stk} {p.unit || 'UND'}] {p.code} - {p.name} (S/. {Number(p.sale_price).toFixed(2)})
+                                    </option>
+                                  );
+                                })}
+                              </optgroup>
+                            )}
+
+                            {productsWithoutStock.length > 0 && (
+                              <optgroup label={`❌ AGOTADOS / SIN STOCK EN ESTE ALMACÉN (${productsWithoutStock.length})`}>
+                                {productsWithoutStock.map((p) => (
+                                  <option key={p.id} value={p.id} disabled={status === 'FACTURADA'}>
+                                    🔴 [SIN STOCK] {p.code} - {p.name} (S/. {Number(p.sale_price).toFixed(2)})
+                                  </option>
+                                ))}
+                              </optgroup>
+                            )}
+                          </>
+                        )}
                       </select>
+
                       {item.product_id > 0 && (
-                        <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                          <StockQuantityPill stock={available} unit="UND" />
-                          <StockStatusBadge stock={available} size="sm" />
-                          {isMax && !isOutOfStock && (
-                            <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400">
-                              (Máximo disponible)
+                        <div className="flex items-center gap-2 mt-2 flex-wrap">
+                          {isOutOfStock ? (
+                            <span className="px-2.5 py-1 rounded-lg bg-rose-100 dark:bg-rose-950/70 text-rose-700 dark:text-rose-300 text-xs font-bold flex items-center gap-1.5 border border-rose-200 dark:border-rose-800">
+                              <AlertTriangle className="w-3.5 h-3.5 text-rose-600" />
+                              <span>¡Producto Agotado en este almacén! (Stock: 0 {products.find(p => p.id === item.product_id)?.unit || 'UND'})</span>
                             </span>
+                          ) : (
+                            <>
+                              <StockQuantityPill stock={available} unit={products.find(p => p.id === item.product_id)?.unit || 'UND'} />
+                              <StockStatusBadge stock={available} size="sm" />
+                              <span className="text-[11px] font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 px-2 py-0.5 rounded-md border border-emerald-200 dark:border-emerald-800">
+                                Disponible para despacho: <b>{available} {products.find(p => p.id === item.product_id)?.unit || 'UND'}</b>
+                              </span>
+                              {isMax && (
+                                <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/50 px-2 py-0.5 rounded-md border border-amber-200 dark:border-amber-800">
+                                  (Alcanzó el máximo disponible)
+                                </span>
+                              )}
+                            </>
                           )}
                         </div>
                       )}

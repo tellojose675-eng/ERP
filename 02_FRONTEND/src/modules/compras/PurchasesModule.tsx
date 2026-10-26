@@ -476,7 +476,7 @@ export const PurchasesModule: React.FC = () => {
                         <option value={0}>-- Seleccionar Producto del Catálogo --</option>
                         {products.map(p => (
                           <option key={p.id} value={p.id}>
-                            {p.code} - {p.name} (Costo: S/. {p.purchase_price})
+                            {p.code} - {p.name} [Stock Actual: {p.total_stock ?? 0} {p.unit || 'UND'}] (Costo: S/. {Number(p.purchase_price).toFixed(2)})
                           </option>
                         ))}
                       </select>
