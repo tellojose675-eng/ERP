@@ -160,6 +160,7 @@ class Sale(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
     customer = relationship("Customer", back_populates="sales")
+    warehouse = relationship("Warehouse")
     details = relationship("SaleDetail", back_populates="sale", cascade="all, delete-orphan")
 
 class SaleDetail(Base):
@@ -194,6 +195,7 @@ class Purchase(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
     supplier = relationship("Supplier", back_populates="purchases")
+    warehouse = relationship("Warehouse")
     details = relationship("PurchaseDetail", back_populates="purchase", cascade="all, delete-orphan")
 
 class PurchaseDetail(Base):

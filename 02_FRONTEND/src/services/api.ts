@@ -27,10 +27,18 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
     headers['Content-Type'] = 'application/json';
   }
 
-  const response = await fetch(`${API_BASE}${endpoint}`, {
-    ...options,
-    headers,
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE}${endpoint}`, {
+      ...options,
+      headers,
+    });
+  } catch (netErr: any) {
+    console.error(`Error de red al conectar con ${API_BASE}${endpoint}:`, netErr);
+    throw new Error(
+      'No se pudo conectar con el servidor backend (puede estar despertando de inactividad o sin conexión). Por favor, espere 15 segundos y vuelva a intentarlo.'
+    );
+  }
 
   if (response.status === 401) {
     removeAuthToken();
@@ -38,8 +46,8 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
   }
 
   if (!response.ok) {
-    const errorData = await response.json().catch(() => ({ detail: 'Error en la petición al servidor' }));
-    throw new Error(errorData.detail || 'Error en la petición');
+    const errorData = await response.json().catch(() => ({ detail: `Error en el servidor (${response.status})` }));
+    throw new Error(errorData.detail || `Error en el servidor (${response.status})`);
   }
 
   return response.json();
