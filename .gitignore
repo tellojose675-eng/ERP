@@ -62,3 +62,6 @@ htmlcov/
 # OS files
 .DS_Store
 Thumbs.db
+
+# Backend: facturas y uploads generados localmente
+03_BACKEND/uploads/

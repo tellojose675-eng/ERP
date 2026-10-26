@@ -118,6 +118,8 @@ export interface Sale {
   sale_number: string;
   customer_id: number;
   customer_name?: string;
+  customer_document?: string;
+  customer_address?: string;
   warehouse_id: number;
   warehouse_name?: string;
   sale_date: string;

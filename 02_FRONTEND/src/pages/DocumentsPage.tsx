@@ -28,6 +28,13 @@ export const DocumentsPage: React.FC = () => {
 
   useEffect(() => {
     loadDocuments();
+    const handleDataChanged = () => {
+      loadDocuments();
+    };
+    window.addEventListener('erp:data-changed', handleDataChanged);
+    return () => {
+      window.removeEventListener('erp:data-changed', handleDataChanged);
+    };
   }, []);
 
   const handleUpload = async (e: React.FormEvent) => {

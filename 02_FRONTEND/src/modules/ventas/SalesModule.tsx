@@ -6,6 +6,7 @@ import { Modal } from '../../components/Modal';
 import { exportToCSV } from '../../utils/exportToCSV';
 import { InvoicePrintModal } from '../../components/InvoicePrintModal';
 import { StockStatusBadge, StockQuantityPill } from '../../components/StockStatusBadge';
+import { ToastContainer, ToastMessage } from '../../components/Toast';
 
 export const SalesModule: React.FC = () => {
   const [sales, setSales] = useState<Sale[]>([]);
@@ -31,6 +32,7 @@ export const SalesModule: React.FC = () => {
   ]);
   const [stockWarning, setStockWarning] = useState<string | null>(null);
   const [onlyWithStock, setOnlyWithStock] = useState<boolean>(true);
+  const [toasts, setToasts] = useState<ToastMessage[]>([]);
 
   const [warehouseStock, setWarehouseStock] = useState<any[]>([]);
 
@@ -218,7 +220,20 @@ export const SalesModule: React.FC = () => {
       setNotes('');
       loadData();
       if (warehouseId) loadWarehouseStock(warehouseId);
+      window.dispatchEvent(new CustomEvent('erp:data-changed'));
       setPrintingSale(created);
+      // Notificación inmediata de guardado en Cloud S3
+      const toastId = `sale-${created.id}-${Date.now()}`;
+      setToasts(prev => [
+        ...prev,
+        {
+          id: toastId,
+          type: 'success',
+          title: `✅ Comprobante ${created.sale_number} emitido`,
+          message: `Archivado automáticamente en Cloud S3. Fecha: ${new Date(created.sale_date).toLocaleDateString('es-PE')} · ${new Date(created.sale_date).toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })}`
+        }
+      ]);
+      setTimeout(() => setToasts(prev => prev.filter(t => t.id !== toastId)), 6000);
     } catch (err: any) {
       alert(err.message || 'Error al emitir comprobante de venta');
     }
@@ -348,7 +363,14 @@ export const SalesModule: React.FC = () => {
                   <td className="p-4 font-mono font-bold text-sky-600 dark:text-sky-400">{sale.sale_number}</td>
                   <td className="p-4 font-medium text-slate-900 dark:text-slate-100">{sale.customer_name}</td>
                   <td className="p-4">{sale.warehouse_name}</td>
-                  <td className="p-4 text-slate-500 dark:text-slate-400">{new Date(sale.sale_date).toLocaleDateString()}</td>
+                  <td className="p-4 text-slate-500 dark:text-slate-400">
+                    <div className="font-medium text-slate-700 dark:text-slate-300">
+                      {new Date(sale.sale_date).toLocaleDateString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                    </div>
+                    <div className="text-[10px] font-mono text-slate-400 dark:text-slate-500 mt-0.5">
+                      {new Date(sale.sale_date).toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })}
+                    </div>
+                  </td>
                   <td className="p-4">
                     <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase ${
                       sale.status === 'FACTURADA' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-400' :
@@ -826,6 +848,9 @@ export const SalesModule: React.FC = () => {
           onClose={() => setPrintingSale(null)}
         />
       )}
+
+      {/* Toast Notifications */}
+      <ToastContainer toasts={toasts} onDismiss={(id) => setToasts(prev => prev.filter(t => t.id !== id))} />
     </div>
   );
 };
