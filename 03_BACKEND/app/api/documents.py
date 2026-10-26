@@ -10,7 +10,7 @@ from app.schemas.schemas import DocumentOut
 from app.core.s3_client import s3_service
 from app.security.deps import get_current_user
 from app.services.audit_service import log_activity
-from app.services.sale_service import generate_invoice_html
+from app.services.sale_service import generate_invoice_html, get_peru_time
 
 router = APIRouter(prefix="/documents", tags=["Gestión Documental Cloud (Amazon S3)"])
 
@@ -25,7 +25,23 @@ def list_documents(
         query = query.filter(Document.entity_type == entity_type)
     if entity_id:
         query = query.filter(Document.entity_id == entity_id)
-    return query.order_by(Document.created_at.desc()).all()
+    docs = query.order_by(Document.created_at.desc()).all()
+    results = []
+    for d in docs:
+        dt_str = get_peru_time(d.created_at).isoformat() if d.created_at else get_peru_time().isoformat()
+        results.append({
+            "id": d.id,
+            "entity_type": d.entity_type,
+            "entity_id": d.entity_id,
+            "filename": d.filename,
+            "original_name": d.original_name,
+            "mime_type": d.mime_type,
+            "file_size": d.file_size,
+            "s3_bucket": d.s3_bucket,
+            "file_url": d.file_url,
+            "created_at": dt_str
+        })
+    return results
 
 @router.post("/upload", response_model=DocumentOut)
 async def upload_document(
@@ -56,7 +72,8 @@ async def upload_document(
         s3_bucket=upload_res.get("bucket"),
         s3_key=upload_res.get("key"),
         file_url=upload_res.get("url"),
-        uploaded_by=current_user.id
+        uploaded_by=current_user.id,
+        created_at=get_peru_time()
     )
     db.add(doc)
     db.commit()
@@ -71,7 +88,18 @@ async def upload_document(
         record_id=str(doc.id),
         details=f"Documento subido a {upload_res['storage']}: {doc.original_name} ({len(content)} bytes)"
     )
-    return doc
+    return {
+        "id": doc.id,
+        "entity_type": doc.entity_type,
+        "entity_id": doc.entity_id,
+        "filename": doc.filename,
+        "original_name": doc.original_name,
+        "mime_type": doc.mime_type,
+        "file_size": doc.file_size,
+        "s3_bucket": doc.s3_bucket,
+        "file_url": doc.file_url,
+        "created_at": get_peru_time(doc.created_at).isoformat()
+    }
 
 @router.get("/download/{filename}")
 def download_document(filename: str, db: Session = Depends(get_db)):

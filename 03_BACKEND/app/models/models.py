@@ -1,14 +1,21 @@
 from sqlalchemy import Column, Integer, String, Boolean, Float, DateTime, ForeignKey, Text, Numeric
 from sqlalchemy.orm import relationship
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from app.core.database import Base
+
+# Zona Horaria Oficial del Perú (UTC-5)
+PERU_TZ = timezone(timedelta(hours=-5))
+
+def get_peru_now():
+    """Fecha y hora oficial de Perú (UTC-5)."""
+    return datetime.now(PERU_TZ)
 
 class Role(Base):
     __tablename__ = "roles"
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(50), unique=True, nullable=False)
     description = Column(String(255))
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=get_peru_now)
     
     users = relationship("User", back_populates="role")
     permissions = relationship("RolePermission", back_populates="role")
@@ -37,7 +44,7 @@ class User(Base):
     full_name = Column(String(100), nullable=False)
     role_id = Column(Integer, ForeignKey("roles.id"), nullable=False)
     is_active = Column(Boolean, default=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=get_peru_now)
 
     role = relationship("Role", back_populates="users")
 
@@ -53,7 +60,7 @@ class Customer(Base):
     credit_limit = Column(Float, default=0.0)
     current_balance = Column(Float, default=0.0)
     is_active = Column(Boolean, default=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=get_peru_now)
 
     sales = relationship("Sale", back_populates="customer")
 
@@ -70,7 +77,7 @@ class Supplier(Base):
     credit_limit = Column(Float, default=0.0)
     current_balance = Column(Float, default=0.0)
     is_active = Column(Boolean, default=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=get_peru_now)
 
     purchases = relationship("Purchase", back_populates="supplier")
 
@@ -95,7 +102,7 @@ class Product(Base):
     sale_price = Column(Float, default=0.0)
     min_stock = Column(Float, default=5.0)
     is_active = Column(Boolean, default=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=get_peru_now)
 
     category = relationship("Category", back_populates="products")
     inventories = relationship("Inventory", back_populates="product", cascade="all, delete-orphan")
@@ -119,7 +126,7 @@ class Inventory(Base):
     warehouse_id = Column(Integer, ForeignKey("almacenes.id"), nullable=False)
     stock = Column(Float, default=0.0)
     reserved_stock = Column(Float, default=0.0)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    updated_at = Column(DateTime, default=get_peru_now, onupdate=datetime.utcnow)
 
     product = relationship("Product", back_populates="inventories")
     warehouse = relationship("Warehouse", back_populates="inventories")
@@ -137,7 +144,7 @@ class InventoryMovement(Base):
     reference_id = Column(Integer, nullable=True)
     notes = Column(Text, nullable=True)
     created_by = Column(Integer, ForeignKey("usuarios.id"), nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=get_peru_now)
 
     product = relationship("Product", back_populates="movements")
     warehouse = relationship("Warehouse", back_populates="movements")
@@ -148,7 +155,7 @@ class Sale(Base):
     sale_number = Column(String(50), unique=True, nullable=False, index=True)
     customer_id = Column(Integer, ForeignKey("clientes.id"), nullable=False)
     warehouse_id = Column(Integer, ForeignKey("almacenes.id"), nullable=False)
-    sale_date = Column(DateTime, default=datetime.utcnow)
+    sale_date = Column(DateTime, default=get_peru_now)
     status = Column(String(30), default="FACTURADA") # COTIZACION, PEDIDO, FACTURADA, ANULADA
     subtotal = Column(Float, default=0.0)
     tax = Column(Float, default=0.0)
@@ -157,7 +164,7 @@ class Sale(Base):
     payment_status = Column(String(30), default="PENDIENTE") # PENDIENTE, PARCIAL, PAGADO
     notes = Column(Text, nullable=True)
     created_by = Column(Integer, ForeignKey("usuarios.id"), nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=get_peru_now)
 
     customer = relationship("Customer", back_populates="sales")
     warehouse = relationship("Warehouse")
@@ -183,7 +190,7 @@ class Purchase(Base):
     purchase_number = Column(String(50), unique=True, nullable=False, index=True)
     supplier_id = Column(Integer, ForeignKey("proveedores.id"), nullable=False)
     warehouse_id = Column(Integer, ForeignKey("almacenes.id"), nullable=False)
-    purchase_date = Column(DateTime, default=datetime.utcnow)
+    purchase_date = Column(DateTime, default=get_peru_now)
     status = Column(String(30), default="RECIBIDA") # SOLICITUD, ORDEN, RECIBIDA, FACTURADA, ANULADA
     subtotal = Column(Float, default=0.0)
     tax = Column(Float, default=0.0)
@@ -192,7 +199,7 @@ class Purchase(Base):
     payment_status = Column(String(30), default="PENDIENTE") # PENDIENTE, PARCIAL, PAGADO
     notes = Column(Text, nullable=True)
     created_by = Column(Integer, ForeignKey("usuarios.id"), nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=get_peru_now)
 
     supplier = relationship("Supplier", back_populates="purchases")
     warehouse = relationship("Warehouse")
@@ -224,10 +231,10 @@ class Payment(Base):
     payment_method = Column(String(50), default="TRANSFERENCIA") # EFECTIVO, TRANSFERENCIA, TARJETA, CHEQUE
     bank_account = Column(String(100), nullable=True)
     transaction_ref = Column(String(100), nullable=True)
-    payment_date = Column(DateTime, default=datetime.utcnow)
+    payment_date = Column(DateTime, default=get_peru_now)
     notes = Column(Text, nullable=True)
     created_by = Column(Integer, ForeignKey("usuarios.id"), nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=get_peru_now)
 
 class Document(Base):
     __tablename__ = "documentos"
@@ -242,7 +249,7 @@ class Document(Base):
     s3_key = Column(String(255), nullable=True)
     file_url = Column(String(500), nullable=True)
     uploaded_by = Column(Integer, ForeignKey("usuarios.id"), nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=get_peru_now)
 
 class AuditLog(Base):
     __tablename__ = "auditoria"
@@ -255,4 +262,4 @@ class AuditLog(Base):
     details = Column(Text, nullable=True)
     ip_address = Column(String(45), nullable=True)
     status = Column(String(20), default="EXITOSO")
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=get_peru_now)

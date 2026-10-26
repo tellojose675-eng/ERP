@@ -3,6 +3,7 @@ import { HardDrive, Upload, Download, FileText, CheckCircle2, Shield, Search, Tr
 import { api } from '../services/api';
 import { DocumentItem } from '../types';
 import { Modal } from '../components/Modal';
+import { formatPeruDateTime } from '../utils/dateUtils';
 
 export const DocumentsPage: React.FC = () => {
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
@@ -185,8 +186,7 @@ export const DocumentsPage: React.FC = () => {
                     {d.file_size ? `${(d.file_size / 1024).toFixed(1)} KB` : 'N/A'}
                   </td>
                   <td className="py-3 px-4 text-slate-500 dark:text-slate-400 font-mono text-[11px]">
-                    {new Date(d.created_at).toLocaleDateString('es-PE', { timeZone: 'America/Lima', day: '2-digit', month: '2-digit', year: 'numeric' })}{' '}
-                    {new Date(d.created_at).toLocaleTimeString('es-PE', { timeZone: 'America/Lima', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })}
+                    {formatPeruDateTime(d.created_at)}
                   </td>
                   <td className="py-3 px-4 text-center">
                     <div className="flex items-center justify-center gap-1.5 flex-wrap">

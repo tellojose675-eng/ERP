@@ -5,6 +5,7 @@ import { Purchase, Supplier, Product, Warehouse } from '../../types';
 import { Modal } from '../../components/Modal';
 import { exportToCSV } from '../../utils/exportToCSV';
 import { StockStatusBadge, StockQuantityPill } from '../../components/StockStatusBadge';
+import { formatPeruDate, formatPeruDateTime } from '../../utils/dateUtils';
 
 export const PurchasesModule: React.FC = () => {
   const [purchases, setPurchases] = useState<Purchase[]>([]);
@@ -206,7 +207,7 @@ export const PurchasesModule: React.FC = () => {
     const exportData = filteredPurchases.map(p => ({
       NumeroOrden: p.purchase_number,
       Proveedor: p.supplier_name,
-      Fecha: new Date(p.purchase_date).toLocaleDateString(),
+      Fecha: formatPeruDate(p.purchase_date),
       Estado: p.status,
       CondicionPago: p.payment_status,
       Subtotal: p.subtotal,
@@ -314,7 +315,7 @@ export const PurchasesModule: React.FC = () => {
                   <td className="p-4 font-mono font-bold text-indigo-600 dark:text-indigo-400">{purchase.purchase_number}</td>
                   <td className="p-4 font-medium text-slate-900 dark:text-slate-100">{purchase.supplier_name}</td>
                   <td className="p-4">{purchase.warehouse_name}</td>
-                  <td className="p-4 text-slate-500 dark:text-slate-400">{new Date(purchase.purchase_date).toLocaleDateString()}</td>
+                  <td className="p-4 text-slate-500 dark:text-slate-400 font-mono text-xs">{formatPeruDate(purchase.purchase_date)}</td>
                   <td className="p-4">
                     <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase ${
                       purchase.status === 'RECIBIDA' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-400' :
@@ -640,7 +641,7 @@ export const PurchasesModule: React.FC = () => {
               </div>
               <div>
                 <span className="text-slate-400 block">Fecha y Hora:</span>
-                <span className="font-semibold text-slate-800 dark:text-slate-200">{new Date(selectedPurchase.purchase_date).toLocaleString()}</span>
+                <span className="font-semibold text-slate-800 dark:text-slate-200">{formatPeruDateTime(selectedPurchase.purchase_date)}</span>
               </div>
               <div>
                 <span className="text-slate-400 block">Almacén Recepción:</span>

@@ -4,6 +4,7 @@ import { api } from '../../services/api';
 import { Payment, Customer, Supplier } from '../../types';
 import { Modal } from '../../components/Modal';
 import { exportToCSV } from '../../utils/exportToCSV';
+import { formatPeruDateTime } from '../../utils/dateUtils';
 
 export const FinanceModule: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'payments' | 'cxc' | 'cxp'>('payments');
@@ -97,7 +98,7 @@ export const FinanceModule: React.FC = () => {
         MedioPago: p.payment_method,
         CuentaBancaria: p.bank_account || '',
         ReferenciaOp: p.transaction_ref || '',
-        Fecha: new Date(p.payment_date).toLocaleString(),
+        Fecha: formatPeruDateTime(p.payment_date),
         Monto: p.amount
       }));
       exportToCSV(exportData, 'movimientos_tesoreria');
@@ -255,7 +256,7 @@ export const FinanceModule: React.FC = () => {
                     <td className="py-3 px-4 font-medium text-slate-800 dark:text-slate-200">{p.entity_name}</td>
                     <td className="py-3 px-4 text-slate-500 dark:text-slate-400">{p.payment_method}</td>
                     <td className="py-3 px-4 font-mono text-slate-500 dark:text-slate-400">{p.transaction_ref || '-'}</td>
-                    <td className="py-3 px-4 text-slate-500 dark:text-slate-400">{new Date(p.payment_date).toLocaleString()}</td>
+                    <td className="py-3 px-4 text-slate-500 dark:text-slate-400 font-mono text-[11px]">{formatPeruDateTime(p.payment_date)}</td>
                     <td className={`py-3 px-4 text-right font-mono font-bold ${isCobro ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-900 dark:text-slate-100'}`}>
                       S/. {p.amount.toFixed(2)}
                     </td>

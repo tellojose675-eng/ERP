@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Printer, X, Monitor, Cloud, CheckCircle2, AlertCircle, Clock, Calendar, FileText, Download, ExternalLink, Eye } from 'lucide-react';
 import { Sale } from '../types';
 import { api } from '../services/api';
+import { formatPeruDateAndParts } from '../utils/dateUtils';
 
 interface InvoicePrintModalProps {
   sale: Sale | null;
@@ -56,27 +57,7 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({ sale, onCl
     window.open(`${apiBase}/documents/view/${encodeURIComponent(filename)}`, '_blank');
   };
 
-  // Formato oficial Perú (America/Lima, UTC-5)
-  const parseSaleDate = (dateStr?: string): { date: string; time: string } => {
-    if (!dateStr) {
-      const now = new Date();
-      return {
-        date: now.toLocaleDateString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'America/Lima' }),
-        time: now.toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true, timeZone: 'America/Lima' }),
-      };
-    }
-    let iso = dateStr.trim();
-    if (!iso.endsWith('Z') && !iso.includes('+') && !iso.includes('-', 10)) {
-      iso = `${iso}Z`;
-    }
-    const d = new Date(iso);
-    return {
-      date: d.toLocaleDateString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'America/Lima' }),
-      time: d.toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true, timeZone: 'America/Lima' }),
-    };
-  };
-
-  const { date: formattedDate, time: formattedTime } = parseSaleDate(sale.sale_date);
+  const { date: formattedDate, time: formattedTime } = formatPeruDateAndParts(sale.sale_date);
 
   const invoiceLabel =
     sale.status === 'COTIZACION'

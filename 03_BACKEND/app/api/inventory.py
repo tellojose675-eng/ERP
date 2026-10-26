@@ -10,6 +10,7 @@ from app.schemas.schemas import (
 from app.services.inventory_service import modify_stock, transfer_stock
 from app.security.deps import get_current_user
 from app.services.audit_service import log_activity
+from app.services.sale_service import get_peru_time
 
 router = APIRouter(prefix="/inventory", tags=["Inventario y Almacenes"])
 
@@ -139,6 +140,6 @@ def get_kardex_movements(
             "reference_type": m.reference_type,
             "reference_id": m.reference_id,
             "notes": m.notes,
-            "created_at": m.created_at
+            "created_at": get_peru_time(m.created_at).isoformat() if m.created_at else None
         })
     return results

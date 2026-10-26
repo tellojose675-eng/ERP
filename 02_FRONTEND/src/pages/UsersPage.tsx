@@ -4,6 +4,7 @@ import { api } from '../services/api';
 import { User } from '../types';
 import { Modal } from '../components/Modal';
 import { exportToCSV } from '../utils/exportToCSV';
+import { formatPeruDate } from '../utils/dateUtils';
 
 export const UsersPage: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
@@ -67,7 +68,7 @@ export const UsersPage: React.FC = () => {
       Email: u.email,
       Rol: u.role?.name || '',
       Activo: u.is_active ? 'SI' : 'NO',
-      FechaCreacion: new Date(u.created_at).toLocaleDateString()
+      FechaCreacion: formatPeruDate(u.created_at)
     }));
     exportToCSV(exportData, 'usuarios_iam');
   };
@@ -126,7 +127,7 @@ export const UsersPage: React.FC = () => {
                     {u.role?.name || 'Usuario'}
                   </span>
                 </td>
-                <td className="py-3 px-4 text-slate-500 dark:text-slate-400">{new Date(u.created_at).toLocaleDateString()}</td>
+                <td className="py-3 px-4 text-slate-500 dark:text-slate-400 font-mono text-xs">{formatPeruDate(u.created_at)}</td>
                 <td className="py-3 px-4 text-center">
                   <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
                     Activo

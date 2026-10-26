@@ -3,6 +3,7 @@ import { Shield, Search, CheckCircle, XCircle, Download } from 'lucide-react';
 import { api } from '../services/api';
 import { AuditLog } from '../types';
 import { exportToCSV } from '../utils/exportToCSV';
+import { formatPeruDateTime } from '../utils/dateUtils';
 
 export const AuditPage: React.FC = () => {
   const [logs, setLogs] = useState<AuditLog[]>([]);
@@ -35,7 +36,7 @@ export const AuditPage: React.FC = () => {
 
   const handleExportCSV = () => {
     const exportData = filtered.map(l => ({
-      FechaHora: new Date(l.created_at).toLocaleString(),
+      FechaHora: formatPeruDateTime(l.created_at),
       Usuario: l.username || 'Sistema',
       Modulo: l.module,
       Accion: l.action,
@@ -118,7 +119,7 @@ export const AuditPage: React.FC = () => {
           <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-mono text-[11px]">
             {filtered.map((l) => (
               <tr key={l.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40">
-                <td className="py-3 px-4 text-slate-500 dark:text-slate-400 font-sans">{new Date(l.created_at).toLocaleString()}</td>
+                <td className="py-3 px-4 text-slate-500 dark:text-slate-400 font-sans">{formatPeruDateTime(l.created_at)}</td>
                 <td className="py-3 px-4 font-sans font-semibold text-slate-800 dark:text-slate-200">{l.username || 'Sistema'}</td>
                 <td className="py-3 px-4">
                   <span className="px-2 py-0.5 rounded-lg text-[10px] font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">

@@ -1,5 +1,5 @@
 from pydantic import BaseModel, EmailStr
-from typing import Optional, List
+from typing import Optional, List, Union
 from datetime import datetime
 
 # ================= AUTH & USUARIOS =================
@@ -41,7 +41,7 @@ class UserOut(BaseModel):
     role_id: int
     role: Optional[RoleOut] = None
     is_active: bool
-    created_at: datetime
+    created_at: Union[datetime, str]
     class Config:
         from_attributes = True
 
@@ -195,7 +195,7 @@ class InventoryMovementOut(BaseModel):
     reference_type: Optional[str] = None
     reference_id: Optional[int] = None
     notes: Optional[str] = None
-    created_at: datetime
+    created_at: Union[datetime, str]
     class Config:
         from_attributes = True
 
@@ -233,7 +233,7 @@ class SaleOut(BaseModel):
     customer_name: Optional[str] = None
     warehouse_id: int
     warehouse_name: Optional[str] = None
-    sale_date: datetime
+    sale_date: Union[datetime, str]
     status: str
     subtotal: float
     tax: float
@@ -279,7 +279,7 @@ class PurchaseOut(BaseModel):
     supplier_name: Optional[str] = None
     warehouse_id: int
     warehouse_name: Optional[str] = None
-    purchase_date: datetime
+    purchase_date: Union[datetime, str]
     status: str
     subtotal: float
     tax: float
@@ -315,7 +315,7 @@ class PaymentOut(BaseModel):
     payment_method: str
     bank_account: Optional[str] = None
     transaction_ref: Optional[str] = None
-    payment_date: datetime
+    payment_date: Union[datetime, str]
     notes: Optional[str] = None
     class Config:
         from_attributes = True
@@ -331,7 +331,7 @@ class DocumentOut(BaseModel):
     file_size: Optional[int] = None
     s3_bucket: Optional[str] = None
     file_url: Optional[str] = None
-    created_at: datetime
+    created_at: Union[datetime, str]
     class Config:
         from_attributes = True
 
@@ -346,7 +346,7 @@ class AuditLogOut(BaseModel):
     details: Optional[str] = None
     ip_address: Optional[str] = None
     status: str
-    created_at: datetime
+    created_at: Union[datetime, str]
     class Config:
         from_attributes = True
 

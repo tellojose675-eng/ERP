@@ -7,6 +7,7 @@ import { exportToCSV } from '../../utils/exportToCSV';
 import { InvoicePrintModal } from '../../components/InvoicePrintModal';
 import { StockStatusBadge, StockQuantityPill } from '../../components/StockStatusBadge';
 import { ToastContainer, ToastMessage } from '../../components/Toast';
+import { formatPeruDate, formatPeruDateAndParts, formatPeruDateTime } from '../../utils/dateUtils';
 
 export const SalesModule: React.FC = () => {
   const [sales, setSales] = useState<Sale[]>([]);
@@ -35,20 +36,6 @@ export const SalesModule: React.FC = () => {
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
 
   const [warehouseStock, setWarehouseStock] = useState<any[]>([]);
-
-  // Función para formatear fechas y horas oficiales de Perú (UTC-5)
-  const formatPeruDateTime = (dateStr?: string) => {
-    if (!dateStr) return { date: '-', time: '-' };
-    let iso = dateStr.trim();
-    if (!iso.endsWith('Z') && !iso.includes('+') && !iso.includes('-', 10)) {
-      iso = `${iso}Z`;
-    }
-    const d = new Date(iso);
-    return {
-      date: d.toLocaleDateString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'America/Lima' }),
-      time: d.toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true, timeZone: 'America/Lima' })
-    };
-  };
 
   const loadWarehouseStock = async (whId: number) => {
     try {
@@ -238,7 +225,7 @@ export const SalesModule: React.FC = () => {
       setPrintingSale(created);
       // Notificación inmediata de guardado en Cloud S3
       const toastId = `sale-${created.id}-${Date.now()}`;
-      const { date: tDate, time: tTime } = formatPeruDateTime(created.sale_date);
+      const { date: tDate, time: tTime } = formatPeruDateAndParts(created.sale_date);
       setToasts(prev => [
         ...prev,
         {
@@ -269,7 +256,7 @@ export const SalesModule: React.FC = () => {
     const exportData = filteredSales.map(s => ({
       Comprobante: s.sale_number,
       Cliente: s.customer_name,
-      Fecha: new Date(s.sale_date).toLocaleDateString(),
+      Fecha: formatPeruDate(s.sale_date),
       Estado: s.status,
       CondicionPago: s.payment_status,
       Subtotal: s.subtotal,
@@ -380,7 +367,7 @@ export const SalesModule: React.FC = () => {
                   <td className="p-4">{sale.warehouse_name}</td>
                   <td className="p-4 text-slate-500 dark:text-slate-400">
                     {(() => {
-                      const { date: sDate, time: sTime } = formatPeruDateTime(sale.sale_date);
+                      const { date: sDate, time: sTime } = formatPeruDateAndParts(sale.sale_date);
                       return (
                         <>
                           <div className="font-medium text-slate-700 dark:text-slate-300">{sDate}</div>
@@ -808,7 +795,7 @@ export const SalesModule: React.FC = () => {
               </div>
               <div>
                 <span className="text-slate-400 block">Fecha y Hora:</span>
-                <span className="font-semibold text-slate-800 dark:text-slate-200">{new Date(selectedSale.sale_date).toLocaleString()}</span>
+                <span className="font-semibold text-slate-800 dark:text-slate-200">{formatPeruDateTime(selectedSale.sale_date)}</span>
               </div>
               <div>
                 <span className="text-slate-400 block">Almacén Despacho:</span>

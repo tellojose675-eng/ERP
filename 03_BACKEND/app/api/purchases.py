@@ -5,6 +5,7 @@ from app.core.database import get_db
 from app.models.models import Purchase, PurchaseDetail, User, Supplier
 from app.schemas.schemas import PurchaseCreate, PurchaseOut
 from app.services.purchase_service import create_purchase
+from app.services.sale_service import get_peru_time
 from app.services.inventory_service import modify_stock
 from app.security.deps import get_current_user
 from app.services.audit_service import log_activity
@@ -35,8 +36,8 @@ def list_purchases(db: Session = Depends(get_db)):
             "supplier_id": p.supplier_id,
             "supplier_name": p.supplier.name if p.supplier else "",
             "warehouse_id": p.warehouse_id,
-            "warehouse_name": "Almacén",
-            "purchase_date": p.purchase_date,
+            "warehouse_name": p.warehouse.name if getattr(p, 'warehouse', None) else "Almacén Central Lima",
+            "purchase_date": get_peru_time(p.purchase_date).isoformat() if p.purchase_date else get_peru_time().isoformat(),
             "status": p.status,
             "subtotal": p.subtotal,
             "tax": p.tax,
@@ -81,8 +82,8 @@ def register_purchase(
         "supplier_id": purchase.supplier_id,
         "supplier_name": purchase.supplier.name if purchase.supplier else "",
         "warehouse_id": purchase.warehouse_id,
-        "warehouse_name": "Almacén",
-        "purchase_date": purchase.purchase_date,
+        "warehouse_name": purchase.warehouse.name if getattr(purchase, 'warehouse', None) else "Almacén Central Lima",
+        "purchase_date": get_peru_time(purchase.purchase_date).isoformat() if purchase.purchase_date else get_peru_time().isoformat(),
         "status": purchase.status,
         "subtotal": purchase.subtotal,
         "tax": purchase.tax,

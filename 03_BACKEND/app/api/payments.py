@@ -5,6 +5,7 @@ from app.core.database import get_db
 from app.models.models import Payment, Customer, Supplier, User
 from app.schemas.schemas import PaymentCreate, PaymentOut
 from app.services.payment_service import register_payment
+from app.services.sale_service import get_peru_time
 from app.security.deps import get_current_user
 
 router = APIRouter(prefix="/payments", tags=["Pagos y Tesorería (CxC / CxP)"])
@@ -34,7 +35,7 @@ def list_payments(db: Session = Depends(get_db)):
             "payment_method": p.payment_method,
             "bank_account": p.bank_account,
             "transaction_ref": p.transaction_ref,
-            "payment_date": p.payment_date,
+            "payment_date": get_peru_time(p.payment_date).isoformat() if p.payment_date else get_peru_time().isoformat(),
             "notes": p.notes
         })
     return results
@@ -72,7 +73,7 @@ def create_payment(
         "payment_method": payment.payment_method,
         "bank_account": payment.bank_account,
         "transaction_ref": payment.transaction_ref,
-        "payment_date": payment.payment_date,
+        "payment_date": get_peru_time(payment.payment_date).isoformat() if payment.payment_date else get_peru_time().isoformat(),
         "notes": payment.notes
     }
 

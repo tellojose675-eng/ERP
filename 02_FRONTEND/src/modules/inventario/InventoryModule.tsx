@@ -5,6 +5,7 @@ import { Product, Warehouse, InventoryItem, InventoryMovement, Category } from '
 import { Modal } from '../../components/Modal';
 import { exportToCSV } from '../../utils/exportToCSV';
 import { StockStatusBadge, StockQuantityPill } from '../../components/StockStatusBadge';
+import { formatPeruDateTime } from '../../utils/dateUtils';
 
 export const InventoryModule: React.FC = () => {
   const [activeSubTab, setActiveSubTab] = useState<'products' | 'stock' | 'kardex' | 'operations'>('products');
@@ -194,7 +195,7 @@ export const InventoryModule: React.FC = () => {
       exportToCSV(exportData, 'stock_por_almacen');
     } else if (activeSubTab === 'kardex') {
       const exportData = kardex.map(k => ({
-        Fecha: new Date(k.created_at).toLocaleString(),
+        Fecha: formatPeruDateTime(k.created_at),
         Producto: k.product_name,
         Almacen: k.warehouse_name,
         TipoMovimiento: k.movement_type,
@@ -442,7 +443,7 @@ export const InventoryModule: React.FC = () => {
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
               {kardex.map((k) => (
                 <tr key={k.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40">
-                  <td className="py-3 px-4 text-slate-500 dark:text-slate-400">{new Date(k.created_at).toLocaleString()}</td>
+                  <td className="py-3 px-4 text-slate-500 dark:text-slate-400 font-mono text-[11px]">{formatPeruDateTime(k.created_at)}</td>
                   <td className="py-3 px-4 font-semibold text-slate-800 dark:text-slate-200">{k.product_name}</td>
                   <td className="py-3 px-4">{k.warehouse_name}</td>
                   <td className="py-3 px-4">
