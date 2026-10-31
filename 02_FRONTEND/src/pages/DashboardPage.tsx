@@ -3,7 +3,7 @@ import {
   TrendingUp, ShoppingCart, Receipt, AlertTriangle, Boxes,
   ArrowUpRight, ArrowDownRight, CheckCircle2, Trash2, AlertOctagon,
   X, Loader2, Sparkles, Tag, Users, Factory, Warehouse, Package,
-  ClipboardList, BadgeDollarSign, BarChart3, CircleDot, Download, Upload, FileSpreadsheet,
+  ClipboardList, BadgeDollarSign, BarChart3, CircleDot, Download, Upload, FileSpreadsheet, ChevronDown,
 } from 'lucide-react';
 import { api } from '../services/api';
 import { DashboardMetrics } from '../types';
@@ -115,6 +115,7 @@ export const DashboardPage: React.FC = () => {
   const [toastType, setToastType]             = useState<'success' | 'info'>('success');
   const [isCsvModalOpen, setIsCsvModalOpen]   = useState(false);
   const [csvModalMode, setCsvModalMode]       = useState<'import' | 'export'>('import');
+  const [isCsvDropdownOpen, setIsCsvDropdownOpen] = useState(false);
 
   // Inline simulation state
   const [simRunning, setSimRunning]   = useState(false);
@@ -313,45 +314,76 @@ export const DashboardPage: React.FC = () => {
               Métricas operativas en tiempo real, trazabilidad de compras y ventas, rotación de existencias y flujo de tesorería.
             </p>
           </div>
-          <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto flex-wrap sm:flex-nowrap">
-            {/* Importar CSV */}
-            <button
-              id="btn-importar-csv-dashboard"
-              onClick={() => {
-                setCsvModalMode('import');
-                setIsCsvModalOpen(true);
-              }}
-              className="flex-1 sm:flex-none justify-center flex items-center gap-2 px-3.5 sm:px-4 py-2.5 bg-sky-600/90 hover:bg-sky-500 border border-sky-400/40 rounded-xl text-xs font-bold shadow-lg shadow-sky-950/40 transition-all cursor-pointer text-white"
-              title="Importar catálogo de productos, clientes o proveedores desde un archivo CSV"
-            >
-              <Upload className="w-4 h-4" />
-              <span>Importar CSV</span>
-            </button>
+          <div className="flex items-center gap-2 shrink-0">
+            {/* Dropdown Centro CSV */}
+            <div className="relative">
+              <button
+                id="btn-centro-csv-dashboard"
+                onClick={() => setIsCsvDropdownOpen(!isCsvDropdownOpen)}
+                className="flex items-center gap-2 px-3.5 py-2.5 bg-white/10 hover:bg-white/15 backdrop-blur-md border border-white/15 hover:border-white/30 rounded-xl text-xs font-semibold text-white transition-all shadow-sm cursor-pointer"
+                title="Gestión de datos masivos CSV"
+              >
+                <FileSpreadsheet className="w-4 h-4 text-sky-400" />
+                <span>Datos CSV</span>
+                <ChevronDown className={`w-3.5 h-3.5 text-slate-300 transition-transform duration-200 ${isCsvDropdownOpen ? 'rotate-180' : ''}`} />
+              </button>
 
-            {/* Exportar CSV */}
-            <button
-              id="btn-exportar-csv-dashboard"
-              onClick={() => {
-                setCsvModalMode('export');
-                setIsCsvModalOpen(true);
-              }}
-              className="flex-1 sm:flex-none justify-center flex items-center gap-2 px-3.5 sm:px-4 py-2.5 bg-emerald-600/90 hover:bg-emerald-500 border border-emerald-400/40 rounded-xl text-xs font-bold shadow-lg shadow-emerald-950/40 transition-all cursor-pointer text-white"
-              title="Descargar reportes ejecutivos, catálogo y clientes en formato CSV"
-            >
-              <Download className="w-4 h-4" />
-              <span>Exportar CSV</span>
-            </button>
+              {isCsvDropdownOpen && (
+                <>
+                  <div
+                    className="fixed inset-0 z-20"
+                    onClick={() => setIsCsvDropdownOpen(false)}
+                  />
+                  <div className="absolute right-0 mt-2 w-64 bg-slate-900/95 backdrop-blur-xl border border-slate-700/80 rounded-2xl shadow-2xl p-1.5 z-30 animate-in fade-in zoom-in-95 duration-150 space-y-1">
+                    <button
+                      onClick={() => {
+                        setIsCsvDropdownOpen(false);
+                        setCsvModalMode('import');
+                        setIsCsvModalOpen(true);
+                      }}
+                      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-medium text-slate-200 hover:text-white hover:bg-sky-600/20 hover:border-sky-500/30 transition-all text-left cursor-pointer group"
+                    >
+                      <div className="w-8 h-8 rounded-lg bg-sky-500/20 text-sky-400 flex items-center justify-center shrink-0 group-hover:bg-sky-500 group-hover:text-white transition-colors">
+                        <Upload className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <div className="font-bold text-white">Importar CSV</div>
+                        <div className="text-[10px] text-slate-400">Productos, clientes o proveedores</div>
+                      </div>
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        setIsCsvDropdownOpen(false);
+                        setCsvModalMode('export');
+                        setIsCsvModalOpen(true);
+                      }}
+                      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-medium text-slate-200 hover:text-white hover:bg-emerald-600/20 hover:border-emerald-500/30 transition-all text-left cursor-pointer group"
+                    >
+                      <div className="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0 group-hover:bg-emerald-500 group-hover:text-white transition-colors">
+                        <Download className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <div className="font-bold text-white">Exportar Reportes</div>
+                        <div className="text-[10px] text-slate-400">Descargar métricas en Excel/CSV</div>
+                      </div>
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
 
             {/* Simulación button */}
             <button
               id="btn-simulacion"
               onClick={runSimulation}
               disabled={simRunning}
-              className="flex-1 sm:flex-none justify-center flex items-center gap-2 px-3.5 sm:px-4 py-2.5 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 disabled:opacity-60 border border-violet-400/30 rounded-xl text-xs font-bold shadow-lg shadow-violet-900/40 transition-all cursor-pointer text-white"
+              className="flex items-center gap-2 px-3.5 py-2.5 bg-white/10 hover:bg-white/15 backdrop-blur-md border border-white/15 hover:border-white/30 disabled:opacity-50 rounded-xl text-xs font-semibold text-slate-200 hover:text-white transition-all shadow-sm cursor-pointer"
+              title="Poblar con transacciones de prueba"
             >
               {simRunning
-                ? <Loader2 className="w-4 h-4 animate-spin" />
-                : <Sparkles className="w-4 h-4" />}
+                ? <Loader2 className="w-4 h-4 animate-spin text-violet-400" />
+                : <Sparkles className="w-4 h-4 text-violet-400" />}
               <span>{simRunning ? 'Simulando...' : 'Simulación'}</span>
             </button>
 
@@ -359,10 +391,10 @@ export const DashboardPage: React.FC = () => {
             <button
               id="btn-vaciar-todo"
               onClick={() => setIsResetModalOpen(true)}
-              className="flex-1 sm:flex-none justify-center flex items-center gap-2 px-3.5 sm:px-4 py-2.5 bg-rose-600/80 hover:bg-rose-600 border border-rose-500/30 rounded-xl text-xs font-semibold shadow-lg shadow-rose-900/30 transition-all cursor-pointer text-white"
+              className="p-2.5 bg-white/5 hover:bg-rose-500/20 border border-white/10 hover:border-rose-500/40 rounded-xl text-slate-400 hover:text-rose-300 transition-all cursor-pointer shadow-sm"
+              title="Vaciar transacciones del sistema"
             >
               <Trash2 className="w-4 h-4" />
-              <span>Vaciar Todo</span>
             </button>
           </div>
         </div>
