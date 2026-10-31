@@ -14,6 +14,7 @@ import { AuditPage } from './pages/AuditPage';
 import { UsersPage } from './pages/UsersPage';
 import { getAuthToken, removeAuthToken } from './services/api';
 import { ThemeMode, getInitialTheme, applyTheme } from './utils/theme';
+import { hasModuleAccess } from './utils/rolePermissions';
 
 export function App() {
   const [user, setUser] = useState<any>(null);
@@ -49,6 +50,16 @@ export function App() {
     setUser(null);
   };
 
+  // Obtener el rol del usuario
+  const userRole: string = user?.role || 'Administrador';
+
+  // Cambio de tab con validación de permisos
+  const handleTabChange = (tab: NavTab) => {
+    if (hasModuleAccess(userRole, tab)) {
+      setActiveTab(tab);
+    }
+  };
+
   if (checkingAuth) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-900 text-white">
@@ -71,21 +82,21 @@ export function App() {
     <DashboardLayout
       user={user}
       activeTab={activeTab}
-      onTabChange={setActiveTab}
+      onTabChange={handleTabChange}
       onLogout={handleLogout}
       theme={theme}
       onToggleTheme={handleToggleTheme}
     >
       {activeTab === 'dashboard' && <DashboardPage />}
-      {activeTab === 'ventas' && <SalesModule />}
-      {activeTab === 'compras' && <PurchasesModule />}
-      {activeTab === 'inventario' && <InventoryModule />}
-      {activeTab === 'clientes' && <CustomersModule />}
-      {activeTab === 'proveedores' && <SuppliersModule />}
-      {activeTab === 'finanzas' && <FinanceModule />}
-      {activeTab === 'documentos' && <DocumentsPage />}
-      {activeTab === 'auditoria' && <AuditPage />}
-      {activeTab === 'usuarios' && <UsersPage />}
+      {activeTab === 'ventas' && hasModuleAccess(userRole, 'ventas') && <SalesModule />}
+      {activeTab === 'compras' && hasModuleAccess(userRole, 'compras') && <PurchasesModule />}
+      {activeTab === 'inventario' && hasModuleAccess(userRole, 'inventario') && <InventoryModule />}
+      {activeTab === 'clientes' && hasModuleAccess(userRole, 'clientes') && <CustomersModule userRole={userRole} />}
+      {activeTab === 'proveedores' && hasModuleAccess(userRole, 'proveedores') && <SuppliersModule />}
+      {activeTab === 'finanzas' && hasModuleAccess(userRole, 'finanzas') && <FinanceModule />}
+      {activeTab === 'documentos' && hasModuleAccess(userRole, 'documentos') && <DocumentsPage />}
+      {activeTab === 'auditoria' && hasModuleAccess(userRole, 'auditoria') && <AuditPage />}
+      {activeTab === 'usuarios' && hasModuleAccess(userRole, 'usuarios') && <UsersPage />}
     </DashboardLayout>
   );
 }

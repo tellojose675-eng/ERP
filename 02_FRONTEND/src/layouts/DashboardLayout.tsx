@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Navbar } from '../components/Navbar';
 import { Sidebar, NavTab } from '../components/Sidebar';
+import { MobileBottomNav } from '../components/MobileBottomNav';
 import { ThemeMode } from '../utils/theme';
 
 interface DashboardLayoutProps {
@@ -22,6 +23,8 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   onToggleTheme,
   children
 }) => {
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
   return (
     <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 transition-colors duration-200">
       <Navbar
@@ -29,13 +32,32 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
         onLogout={onLogout}
         theme={theme}
         onToggleTheme={onToggleTheme}
+        isMobileMenuOpen={isMobileMenuOpen}
+        onToggleMobileMenu={() => setIsMobileMenuOpen(prev => !prev)}
       />
-      <div className="flex flex-1">
-        <Sidebar activeTab={activeTab} onTabChange={onTabChange} userRole={user?.role} />
-        <main className="flex-1 p-6 md:p-8 max-w-7xl mx-auto w-full overflow-x-hidden">
+      <div className="flex flex-1 relative">
+        <Sidebar
+          activeTab={activeTab}
+          onTabChange={onTabChange}
+          userRole={user?.role}
+          isOpen={isMobileMenuOpen}
+          onClose={() => setIsMobileMenuOpen(false)}
+        />
+        <main className="flex-1 p-3.5 sm:p-6 md:p-8 pb-24 md:pb-8 max-w-7xl mx-auto w-full overflow-x-hidden">
           {children}
         </main>
       </div>
+
+      {/* Navegación rápida inferior exclusiva para pantallas móviles */}
+      <MobileBottomNav
+        activeTab={activeTab}
+        onTabChange={(tab) => {
+          onTabChange(tab);
+          setIsMobileMenuOpen(false);
+        }}
+        onOpenMenu={() => setIsMobileMenuOpen(true)}
+      />
     </div>
   );
 };
+

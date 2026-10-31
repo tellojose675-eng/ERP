@@ -67,11 +67,11 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({ sale, onCl
       : 'FACTURA ELECTRÓNICA';
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/75 backdrop-blur-sm overflow-y-auto">
-      <div className="bg-white text-slate-800 rounded-3xl shadow-2xl border border-slate-200 max-w-3xl w-full p-8 my-8 relative flex flex-col">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-900/75 backdrop-blur-sm overflow-y-auto">
+      <div className="bg-white text-slate-800 rounded-2xl sm:rounded-3xl shadow-2xl border border-slate-200 max-w-3xl w-full p-4 sm:p-8 my-4 sm:my-8 relative flex flex-col">
 
         {/* ── Barra de acciones (oculta en impresión) ── */}
-        <div className="flex items-center justify-between pb-5 mb-5 border-b border-slate-200 print:hidden gap-3 flex-wrap">
+        <div className="flex items-center justify-between pb-4 sm:pb-5 mb-4 sm:mb-5 border-b border-slate-200 print:hidden gap-3 flex-wrap">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-xs font-semibold px-2.5 py-1 bg-sky-100 text-sky-800 rounded-full">
               Vista de Impresión Fiscal
@@ -197,8 +197,8 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({ sale, onCl
           </div>
 
           {/* Tabla de productos */}
-          <div className="border border-slate-200 rounded-2xl overflow-hidden mb-5">
-            <table className="w-full text-left text-xs">
+          <div className="border border-slate-200 rounded-2xl overflow-x-auto mb-5">
+            <table className="w-full text-left text-xs min-w-[460px] sm:min-w-0">
               <thead className="bg-slate-100 text-slate-700 uppercase font-semibold text-[10px]">
                 <tr>
                   <th className="py-2.5 px-3">Código</th>

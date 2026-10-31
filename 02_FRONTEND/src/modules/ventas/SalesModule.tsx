@@ -809,8 +809,8 @@ export const SalesModule: React.FC = () => {
 
             <div>
               <h4 className="font-bold text-slate-900 dark:text-white mb-2">Ítems Facturados</h4>
-              <div className="border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden">
-                <table className="w-full text-left text-xs">
+              <div className="border border-slate-200 dark:border-slate-800 rounded-xl overflow-x-auto">
+                <table className="w-full text-left text-xs min-w-[460px] sm:min-w-0">
                   <thead className="bg-slate-100 dark:bg-slate-800/80 font-semibold text-slate-600 dark:text-slate-300">
                     <tr>
                       <th className="p-3">Código</th>

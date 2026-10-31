@@ -198,27 +198,27 @@ export const FinanceModule: React.FC = () => {
       </div>
 
       {/* Tabs */}
-      <div className="flex border-b border-slate-200 dark:border-slate-800 gap-6 text-xs font-semibold text-slate-500 dark:text-slate-400">
+      <div className="flex border-b border-slate-200 dark:border-slate-800 gap-6 text-xs font-semibold text-slate-500 dark:text-slate-400 overflow-x-auto whitespace-nowrap pb-1">
         <button
           onClick={() => setActiveTab('payments')}
-          className={`pb-3 border-b-2 transition-colors ${
-            activeTab === 'payments' ? 'border-emerald-600 text-emerald-600 dark:text-emerald-400' : 'border-transparent hover:text-slate-700 dark:hover:text-slate-300'
+          className={`pb-3 border-b-2 transition-colors cursor-pointer shrink-0 ${
+            activeTab === 'payments' ? 'border-emerald-600 text-emerald-600 dark:text-emerald-400 font-bold' : 'border-transparent hover:text-slate-700 dark:hover:text-slate-300'
           }`}
         >
           Historial de Movimientos
         </button>
         <button
           onClick={() => setActiveTab('cxc')}
-          className={`pb-3 border-b-2 transition-colors ${
-            activeTab === 'cxc' ? 'border-emerald-600 text-emerald-600 dark:text-emerald-400' : 'border-transparent hover:text-slate-700 dark:hover:text-slate-300'
+          className={`pb-3 border-b-2 transition-colors cursor-pointer shrink-0 ${
+            activeTab === 'cxc' ? 'border-emerald-600 text-emerald-600 dark:text-emerald-400 font-bold' : 'border-transparent hover:text-slate-700 dark:hover:text-slate-300'
           }`}
         >
           Cuentas por Cobrar (Clientes)
         </button>
         <button
           onClick={() => setActiveTab('cxp')}
-          className={`pb-3 border-b-2 transition-colors ${
-            activeTab === 'cxp' ? 'border-emerald-600 text-emerald-600 dark:text-emerald-400' : 'border-transparent hover:text-slate-700 dark:hover:text-slate-300'
+          className={`pb-3 border-b-2 transition-colors cursor-pointer shrink-0 ${
+            activeTab === 'cxp' ? 'border-emerald-600 text-emerald-600 dark:text-emerald-400 font-bold' : 'border-transparent hover:text-slate-700 dark:hover:text-slate-300'
           }`}
         >
           Cuentas por Pagar (Proveedores)
@@ -228,117 +228,123 @@ export const FinanceModule: React.FC = () => {
       {/* Tab 1: Historial */}
       {activeTab === 'payments' && (
         <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs overflow-hidden transition-colors">
-          <table className="w-full text-left text-xs text-slate-600 dark:text-slate-300">
-            <thead className="bg-slate-50 dark:bg-slate-800/70 text-slate-500 dark:text-slate-400 uppercase text-[10px] font-semibold border-b border-slate-200 dark:border-slate-800">
-              <tr>
-                <th className="py-3.5 px-4">N° Recibo / Voucher</th>
-                <th className="py-3.5 px-4">Operación</th>
-                <th className="py-3.5 px-4">Beneficiario / Emisor</th>
-                <th className="py-3.5 px-4">Medio de Pago</th>
-                <th className="py-3.5 px-4">Referencia Bancaria</th>
-                <th className="py-3.5 px-4">Fecha</th>
-                <th className="py-3.5 px-4 text-right">Monto</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-              {payments.map((p) => {
-                const isCobro = p.payment_type === 'COBRO_CLIENTE';
-                return (
-                  <tr key={p.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40">
-                    <td className="py-3 px-4 font-mono font-medium text-slate-900 dark:text-slate-100">{p.payment_number}</td>
-                    <td className="py-3 px-4">
-                      <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-semibold ${
-                        isCobro ? 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800' : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700'
-                      }`}>
-                        {isCobro ? 'Cobranza (CxC)' : 'Pago (CxP)'}
-                      </span>
-                    </td>
-                    <td className="py-3 px-4 font-medium text-slate-800 dark:text-slate-200">{p.entity_name}</td>
-                    <td className="py-3 px-4 text-slate-500 dark:text-slate-400">{p.payment_method}</td>
-                    <td className="py-3 px-4 font-mono text-slate-500 dark:text-slate-400">{p.transaction_ref || '-'}</td>
-                    <td className="py-3 px-4 text-slate-500 dark:text-slate-400 font-mono text-[11px]">{formatPeruDateTime(p.payment_date)}</td>
-                    <td className={`py-3 px-4 text-right font-mono font-bold ${isCobro ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-900 dark:text-slate-100'}`}>
-                      S/. {p.amount.toFixed(2)}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs text-slate-600 dark:text-slate-300">
+              <thead className="bg-slate-50 dark:bg-slate-800/70 text-slate-500 dark:text-slate-400 uppercase text-[10px] font-semibold border-b border-slate-200 dark:border-slate-800">
+                <tr>
+                  <th className="py-3.5 px-4 whitespace-nowrap">N° Recibo / Voucher</th>
+                  <th className="py-3.5 px-4 whitespace-nowrap">Operación</th>
+                  <th className="py-3.5 px-4 whitespace-nowrap">Beneficiario / Emisor</th>
+                  <th className="py-3.5 px-4 whitespace-nowrap">Medio de Pago</th>
+                  <th className="py-3.5 px-4 whitespace-nowrap">Referencia Bancaria</th>
+                  <th className="py-3.5 px-4 whitespace-nowrap">Fecha</th>
+                  <th className="py-3.5 px-4 text-right whitespace-nowrap">Monto</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                {payments.map((p) => {
+                  const isCobro = p.payment_type === 'COBRO_CLIENTE';
+                  return (
+                    <tr key={p.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40">
+                      <td className="py-3 px-4 font-mono font-medium text-slate-900 dark:text-slate-100">{p.payment_number}</td>
+                      <td className="py-3 px-4">
+                        <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-semibold ${
+                          isCobro ? 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800' : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700'
+                        }`}>
+                          {isCobro ? 'Cobranza (CxC)' : 'Pago (CxP)'}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 font-medium text-slate-800 dark:text-slate-200">{p.entity_name}</td>
+                      <td className="py-3 px-4 text-slate-500 dark:text-slate-400">{p.payment_method}</td>
+                      <td className="py-3 px-4 font-mono text-slate-500 dark:text-slate-400">{p.transaction_ref || '-'}</td>
+                      <td className="py-3 px-4 text-slate-500 dark:text-slate-400 font-mono text-[11px]">{formatPeruDateTime(p.payment_date)}</td>
+                      <td className={`py-3 px-4 text-right font-mono font-bold ${isCobro ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-900 dark:text-slate-100'}`}>
+                        S/. {p.amount.toFixed(2)}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 
       {/* Tab 2: CxC */}
       {activeTab === 'cxc' && (
         <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs overflow-hidden transition-colors">
-          <table className="w-full text-left text-xs text-slate-600 dark:text-slate-300">
-            <thead className="bg-slate-50 dark:bg-slate-800/70 text-slate-500 dark:text-slate-400 uppercase text-[10px] font-semibold border-b border-slate-200 dark:border-slate-800">
-              <tr>
-                <th className="py-3.5 px-4">Cliente</th>
-                <th className="py-3.5 px-4">Documento</th>
-                <th className="py-3.5 px-4 text-right">Límite Otorgado</th>
-                <th className="py-3.5 px-4 text-right">Saldo Deudor Pendiente</th>
-                <th className="py-3.5 px-4 text-center">Acción</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-              {cxcList.map((item, idx) => (
-                <tr key={idx} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40">
-                  <td className="py-3 px-4 font-semibold text-slate-800 dark:text-slate-200">{item.customer_name}</td>
-                  <td className="py-3 px-4 font-mono">{item.document}</td>
-                  <td className="py-3 px-4 text-right font-mono">S/. {item.credit_limit.toFixed(2)}</td>
-                  <td className="py-3 px-4 text-right font-mono font-bold text-amber-600 dark:text-amber-400">
-                    S/. {item.balance.toFixed(2)}
-                  </td>
-                  <td className="py-3 px-4 text-center">
-                    <button
-                      onClick={() => openPaymentForEntity('COBRO_CLIENTE', item.customer_id, item.balance)}
-                      className="px-3 py-1 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 font-semibold rounded-xl text-[11px] transition-colors border border-emerald-200 dark:border-emerald-800"
-                    >
-                      Registrar Cobro
-                    </button>
-                  </td>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs text-slate-600 dark:text-slate-300">
+              <thead className="bg-slate-50 dark:bg-slate-800/70 text-slate-500 dark:text-slate-400 uppercase text-[10px] font-semibold border-b border-slate-200 dark:border-slate-800">
+                <tr>
+                  <th className="py-3.5 px-4 whitespace-nowrap">Cliente</th>
+                  <th className="py-3.5 px-4 whitespace-nowrap">Documento</th>
+                  <th className="py-3.5 px-4 text-right whitespace-nowrap">Límite Otorgado</th>
+                  <th className="py-3.5 px-4 text-right whitespace-nowrap">Saldo Deudor Pendiente</th>
+                  <th className="py-3.5 px-4 text-center whitespace-nowrap">Acción</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                {cxcList.map((item, idx) => (
+                  <tr key={idx} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40">
+                    <td className="py-3 px-4 font-semibold text-slate-800 dark:text-slate-200">{item.customer_name}</td>
+                    <td className="py-3 px-4 font-mono">{item.document}</td>
+                    <td className="py-3 px-4 text-right font-mono">S/. {item.credit_limit.toFixed(2)}</td>
+                    <td className="py-3 px-4 text-right font-mono font-bold text-amber-600 dark:text-amber-400">
+                      S/. {item.balance.toFixed(2)}
+                    </td>
+                    <td className="py-3 px-4 text-center">
+                      <button
+                        onClick={() => openPaymentForEntity('COBRO_CLIENTE', item.customer_id, item.balance)}
+                        className="px-3 py-1 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 font-semibold rounded-xl text-[11px] transition-colors border border-emerald-200 dark:border-emerald-800 cursor-pointer whitespace-nowrap"
+                      >
+                        Registrar Cobro
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 
       {/* Tab 3: CxP */}
       {activeTab === 'cxp' && (
         <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs overflow-hidden transition-colors">
-          <table className="w-full text-left text-xs text-slate-600 dark:text-slate-300">
-            <thead className="bg-slate-50 dark:bg-slate-800/70 text-slate-500 dark:text-slate-400 uppercase text-[10px] font-semibold border-b border-slate-200 dark:border-slate-800">
-              <tr>
-                <th className="py-3.5 px-4">Proveedor</th>
-                <th className="py-3.5 px-4">Documento</th>
-                <th className="py-3.5 px-4 text-right">Límite Otorgado</th>
-                <th className="py-3.5 px-4 text-right">Obligación Pendiente</th>
-                <th className="py-3.5 px-4 text-center">Acción</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-              {cxpList.map((item, idx) => (
-                <tr key={idx} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40">
-                  <td className="py-3 px-4 font-semibold text-slate-800 dark:text-slate-200">{item.supplier_name}</td>
-                  <td className="py-3 px-4 font-mono">{item.document}</td>
-                  <td className="py-3 px-4 text-right font-mono">S/. {item.credit_limit.toFixed(2)}</td>
-                  <td className="py-3 px-4 text-right font-mono font-bold text-rose-600 dark:text-rose-400">
-                    S/. {item.balance.toFixed(2)}
-                  </td>
-                  <td className="py-3 px-4 text-center">
-                    <button
-                      onClick={() => openPaymentForEntity('PAGO_PROVEEDOR', item.supplier_id, item.balance)}
-                      className="px-3 py-1 bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 font-semibold rounded-xl text-[11px] transition-colors border border-slate-200 dark:border-slate-700"
-                    >
-                      Emitir Pago
-                    </button>
-                  </td>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs text-slate-600 dark:text-slate-300">
+              <thead className="bg-slate-50 dark:bg-slate-800/70 text-slate-500 dark:text-slate-400 uppercase text-[10px] font-semibold border-b border-slate-200 dark:border-slate-800">
+                <tr>
+                  <th className="py-3.5 px-4 whitespace-nowrap">Proveedor</th>
+                  <th className="py-3.5 px-4 whitespace-nowrap">Documento</th>
+                  <th className="py-3.5 px-4 text-right whitespace-nowrap">Límite Otorgado</th>
+                  <th className="py-3.5 px-4 text-right whitespace-nowrap">Obligación Pendiente</th>
+                  <th className="py-3.5 px-4 text-center whitespace-nowrap">Acción</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                {cxpList.map((item, idx) => (
+                  <tr key={idx} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40">
+                    <td className="py-3 px-4 font-semibold text-slate-800 dark:text-slate-200">{item.supplier_name}</td>
+                    <td className="py-3 px-4 font-mono">{item.document}</td>
+                    <td className="py-3 px-4 text-right font-mono">S/. {item.credit_limit.toFixed(2)}</td>
+                    <td className="py-3 px-4 text-right font-mono font-bold text-rose-600 dark:text-rose-400">
+                      S/. {item.balance.toFixed(2)}
+                    </td>
+                    <td className="py-3 px-4 text-center">
+                      <button
+                        onClick={() => openPaymentForEntity('PAGO_PROVEEDOR', item.supplier_id, item.balance)}
+                        className="px-3 py-1 bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 font-semibold rounded-xl text-[11px] transition-colors border border-slate-200 dark:border-slate-700 cursor-pointer whitespace-nowrap"
+                      >
+                        Emitir Pago
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 

@@ -300,23 +300,23 @@ export const DashboardPage: React.FC = () => {
       )}
 
       {/* ── Top Banner ── */}
-      <div className="bg-gradient-to-r from-sky-900 via-slate-900 to-indigo-950 p-6 md:p-8 rounded-3xl text-white shadow-xl shadow-sky-950/20 border border-slate-800 space-y-4">
+      <div className="bg-gradient-to-r from-sky-900 via-slate-900 to-indigo-950 p-4 sm:p-6 md:p-8 rounded-2xl sm:rounded-3xl text-white shadow-xl shadow-sky-950/20 border border-slate-800 space-y-4">
         {/* Header row */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <span className="text-[11px] font-bold uppercase tracking-wider text-sky-400">Panel Ejecutivo &amp; BI</span>
-            <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight mt-1">Dashboard Empresarial Cloud</h1>
+            <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-sky-400">Panel Ejecutivo &amp; BI</span>
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-extrabold tracking-tight mt-1">Dashboard Empresarial Cloud</h1>
             <p className="text-xs md:text-sm text-slate-300 mt-1 max-w-xl">
               Métricas operativas en tiempo real, trazabilidad de compras y ventas, rotación de existencias y flujo de tesorería.
             </p>
           </div>
-          <div className="flex items-center gap-2.5 shrink-0 flex-wrap self-start sm:self-auto">
+          <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto">
             {/* Simulación button */}
             <button
               id="btn-simulacion"
               onClick={runSimulation}
               disabled={simRunning}
-              className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 disabled:opacity-60 border border-violet-400/30 rounded-xl text-xs font-bold shadow-lg shadow-violet-900/40 transition-all cursor-pointer text-white"
+              className="flex-1 sm:flex-none justify-center flex items-center gap-2 px-3.5 sm:px-4 py-2.5 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 disabled:opacity-60 border border-violet-400/30 rounded-xl text-xs font-bold shadow-lg shadow-violet-900/40 transition-all cursor-pointer text-white"
             >
               {simRunning
                 ? <Loader2 className="w-4 h-4 animate-spin" />
@@ -328,7 +328,7 @@ export const DashboardPage: React.FC = () => {
             <button
               id="btn-vaciar-todo"
               onClick={() => setIsResetModalOpen(true)}
-              className="flex items-center gap-2 px-4 py-2.5 bg-rose-600/80 hover:bg-rose-600 border border-rose-500/30 rounded-xl text-xs font-semibold shadow-lg shadow-rose-900/30 transition-all cursor-pointer text-white"
+              className="flex-1 sm:flex-none justify-center flex items-center gap-2 px-3.5 sm:px-4 py-2.5 bg-rose-600/80 hover:bg-rose-600 border border-rose-500/30 rounded-xl text-xs font-semibold shadow-lg shadow-rose-900/30 transition-all cursor-pointer text-white"
             >
               <Trash2 className="w-4 h-4" />
               <span>Vaciar Todo</span>
@@ -449,8 +449,8 @@ export const DashboardPage: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
         {/* Evolución Comercial — fixed bar heights */}
-        <div className="lg:col-span-2 bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs transition-colors">
-          <div className="flex items-center justify-between mb-6">
+        <div className="lg:col-span-2 bg-white dark:bg-slate-900 p-4 sm:p-6 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs transition-colors">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-6">
             <div>
               <h2 className="text-base font-bold text-slate-900 dark:text-white">Evolución Comercial (Ventas vs Compras)</h2>
               <p className="text-xs text-slate-500 dark:text-slate-400">Comparativa histórica de ingresos y costos operativos</p>

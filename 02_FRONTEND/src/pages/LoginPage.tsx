@@ -39,35 +39,35 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess, theme, onT
       <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-indigo-500/10 dark:bg-indigo-500/20 rounded-full blur-3xl pointer-events-none"></div>
 
       {/* Single Theme Toggle Button on top right */}
-      <div className="absolute top-6 right-6 z-20">
+      <div className="absolute top-4 right-4 sm:top-6 sm:right-6 z-20">
         <button
           type="button"
           onClick={onToggleTheme}
-          className="flex items-center gap-2 px-3.5 py-2 rounded-2xl bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-amber-300 shadow-md transition-all text-xs font-semibold cursor-pointer"
+          className="flex items-center gap-1.5 px-3 py-2 sm:px-3.5 sm:py-2 rounded-2xl bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-amber-300 shadow-md transition-all text-xs font-semibold cursor-pointer"
           title={theme === 'dark' ? 'Cambiar a Modo Claro' : 'Cambiar a Modo Oscuro'}
         >
           {theme === 'dark' ? (
             <>
-              <Sun className="w-4 h-4 text-amber-400" />
-              <span>Modo Claro</span>
+              <Sun className="w-4 h-4 text-amber-400 shrink-0" />
+              <span className="hidden sm:inline">Modo Claro</span>
             </>
           ) : (
             <>
-              <Moon className="w-4 h-4 text-slate-600" />
-              <span>Modo Oscuro</span>
+              <Moon className="w-4 h-4 text-slate-600 shrink-0" />
+              <span className="hidden sm:inline">Modo Oscuro</span>
             </>
           )}
         </button>
       </div>
 
-      <div className="max-w-md w-full bg-white dark:bg-slate-900 rounded-3xl shadow-2xl p-8 relative z-10 border border-slate-200/80 dark:border-slate-800 transition-colors duration-200">
+      <div className="max-w-md w-full bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl shadow-2xl p-5 sm:p-8 relative z-10 border border-slate-200/80 dark:border-slate-800 transition-colors duration-200">
         {/* Header */}
-        <div className="text-center mb-7">
-          <div className="w-16 h-16 bg-gradient-to-tr from-sky-600 to-indigo-600 rounded-2xl mx-auto flex items-center justify-center text-white shadow-xl shadow-sky-500/25 mb-4">
-            <Monitor className="w-9 h-9" />
+        <div className="text-center mb-6 sm:mb-7">
+          <div className="w-14 h-14 sm:w-16 sm:h-16 bg-gradient-to-tr from-sky-600 to-indigo-600 rounded-2xl mx-auto flex items-center justify-center text-white shadow-xl shadow-sky-500/25 mb-3 sm:mb-4">
+            <Monitor className="w-7 h-7 sm:w-9 sm:h-9" />
           </div>
-          <h1 className="text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight">ERP TechStore</h1>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Venta de Cómputo • Pantallas, Celulares, Tablets & CPUs</p>
+          <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight">ERP TechStore</h1>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Venta de Cómputo • Pantallas, Celulares, Tablets &amp; CPUs</p>
         </div>
 
         {/* AWS Architecture Pill */}

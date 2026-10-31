@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { Boxes, Plus, ArrowLeftRight, Sliders, History, Search, Download, Filter, CheckCircle2, PlusCircle, Loader2, X } from 'lucide-react';
+import { Boxes, Plus, ArrowLeftRight, Sliders, History, Search, Download, Filter, CheckCircle2, PlusCircle, Loader2, X, Upload } from 'lucide-react';
 import { api } from '../../services/api';
 import { Product, Warehouse, InventoryItem, InventoryMovement, Category } from '../../types';
 import { Modal } from '../../components/Modal';
 import { exportToCSV } from '../../utils/exportToCSV';
+import { importCSVFlow } from '../../utils/importFromCSV';
 import { StockStatusBadge, StockQuantityPill } from '../../components/StockStatusBadge';
 import { formatPeruDateTime } from '../../utils/dateUtils';
 
@@ -17,6 +18,8 @@ export const InventoryModule: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<number | 'ALL'>('ALL');
+  const [importLoading, setImportLoading] = useState(false);
+  const [importResult, setImportResult] = useState<string | null>(null);
 
   // Modals
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
@@ -219,6 +222,47 @@ export const InventoryModule: React.FC = () => {
     }
   };
 
+  const handleImportCSV = async () => {
+    setImportLoading(true);
+    setImportResult(null);
+    try {
+      const result = await importCSVFlow();
+      if (!result) { setImportLoading(false); return; }
+      if (!result.success) {
+        setImportResult(`❌ ${result.errors.join(', ')}`);
+        setImportLoading(false);
+        return;
+      }
+      let created = 0, errors = 0;
+      for (const row of result.data) {
+        try {
+          const code = row['SKU'] || row['codigo'] || row['code'] || row['Código'] || '';
+          const name = row['Producto'] || row['nombre'] || row['name'] || row['Descripcion'] || '';
+          if (!code || !name) { errors++; continue; }
+          // Buscar categoría por nombre
+          const catName = row['Categoria'] || row['categoria'] || row['category'] || '';
+          const cat = categories.find(c => c.name.toLowerCase().includes(catName.toLowerCase()));
+          await api.createProduct({
+            code,
+            name,
+            category_id: cat?.id || (categories[0]?.id ?? 1),
+            unit: row['Unidad'] || row['unidad'] || row['unit'] || 'UND',
+            purchase_price: parseFloat(row['CostoUnitario'] || row['costo'] || row['purchase_price'] || '0') || 0,
+            sale_price: parseFloat(row['PrecioVenta'] || row['precio'] || row['sale_price'] || '0') || 0,
+            min_stock: parseFloat(row['StockMinimo'] || row['min_stock'] || '5') || 5
+          });
+          created++;
+        } catch { errors++; }
+      }
+      setImportResult(`✅ ${created} productos importados${errors > 0 ? ` | ⚠️ ${errors} filas con error` : ''}`);
+      loadAll();
+    } catch (err: any) {
+      setImportResult(`❌ Error: ${err.message}`);
+    } finally {
+      setImportLoading(false);
+    }
+  };
+
   const filteredProducts = products.filter(p => {
     const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       p.code.toLowerCase().includes(searchTerm.toLowerCase());
@@ -234,17 +278,25 @@ export const InventoryModule: React.FC = () => {
           <h1 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">Inventario & Kardex Permanente</h1>
           <p className="text-xs text-slate-500 dark:text-slate-400">Control de catálogo ({products.length} productos), multi-almacén y asientos de Kardex.</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <button
             onClick={handleExportCSV}
-            className="flex items-center gap-2 px-3.5 py-2.5 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 font-semibold rounded-xl text-xs transition-colors shadow-xs"
+            className="flex-1 sm:flex-none justify-center flex items-center gap-2 px-3.5 py-2.5 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 font-semibold rounded-xl text-xs transition-colors shadow-xs"
           >
             <Download className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
             <span>Exportar CSV</span>
           </button>
           <button
+            onClick={handleImportCSV}
+            disabled={importLoading}
+            className="flex-1 sm:flex-none justify-center flex items-center gap-2 px-3.5 py-2.5 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 font-semibold rounded-xl text-xs transition-colors shadow-xs disabled:opacity-60"
+          >
+            <Upload className="w-4 h-4 text-sky-600 dark:text-sky-400" />
+            <span>{importLoading ? 'Importando...' : 'Importar CSV'}</span>
+          </button>
+          <button
             onClick={() => setIsProductModalOpen(true)}
-            className="flex items-center gap-2 px-4 py-2.5 bg-sky-600 hover:bg-sky-700 text-white font-semibold rounded-xl text-xs shadow-md shadow-sky-600/20 transition-colors"
+            className="flex-1 sm:flex-none justify-center flex items-center gap-2 px-4 py-2.5 bg-sky-600 hover:bg-sky-700 text-white font-semibold rounded-xl text-xs shadow-md shadow-sky-600/20 transition-colors"
           >
             <Plus className="w-4 h-4" />
             <span>Nuevo Producto</span>
@@ -252,8 +304,20 @@ export const InventoryModule: React.FC = () => {
         </div>
       </div>
 
+      {/* Resultado importación */}
+      {importResult && (
+        <div className={`p-3 rounded-xl text-xs font-semibold border ${
+          importResult.startsWith('✅')
+            ? 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-200'
+            : 'bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800 text-red-800 dark:text-red-200'
+        }`}>
+          {importResult}
+          <button onClick={() => setImportResult(null)} className="ml-4 underline opacity-70 hover:opacity-100">Cerrar</button>
+        </div>
+      )}
+
       {/* Sub Tabs */}
-      <div className="flex border-b border-slate-200 dark:border-slate-800 gap-6 text-xs font-semibold text-slate-500 dark:text-slate-400">
+      <div className="flex border-b border-slate-200 dark:border-slate-800 gap-6 text-xs font-semibold text-slate-500 dark:text-slate-400 overflow-x-auto whitespace-nowrap pb-1">
         <button
           onClick={() => setActiveSubTab('products')}
           className={`pb-3 flex items-center gap-2 transition-colors border-b-2 ${
@@ -395,76 +459,80 @@ export const InventoryModule: React.FC = () => {
       {/* Subtab 2: Stock por Almacén */}
       {activeSubTab === 'stock' && (
         <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs overflow-hidden transition-colors">
-          <table className="w-full text-left text-xs text-slate-600 dark:text-slate-300">
-            <thead className="bg-slate-50 dark:bg-slate-800/70 text-slate-500 dark:text-slate-400 uppercase text-[10px] font-semibold border-b border-slate-200 dark:border-slate-800">
-              <tr>
-                <th className="py-3.5 px-4">Almacén</th>
-                <th className="py-3.5 px-4">Código Producto</th>
-                <th className="py-3.5 px-4">Descripción</th>
-                <th className="py-3.5 px-4 text-right">Existencia Actual</th>
-                <th className="py-3.5 px-4 text-right">Stock Reservado</th>
-                <th className="py-3.5 px-4 text-right">Disponible</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-              {stockItems.map((item) => (
-                <tr key={item.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40">
-                  <td className="py-3 px-4 font-semibold text-slate-800 dark:text-slate-200">{item.warehouse_name}</td>
-                  <td className="py-3 px-4 font-mono font-medium">{item.product_code}</td>
-                  <td className="py-3 px-4">{item.product_name}</td>
-                  <td className="py-3 px-4 text-right font-mono font-bold text-slate-900 dark:text-slate-100">{item.stock}</td>
-                  <td className="py-3 px-4 text-right font-mono text-amber-600 dark:text-amber-400">{item.reserved_stock}</td>
-                  <td className="py-3 px-4 text-right">
-                    <StockQuantityPill stock={item.stock - item.reserved_stock} unit="" />
-                  </td>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs text-slate-600 dark:text-slate-300">
+              <thead className="bg-slate-50 dark:bg-slate-800/70 text-slate-500 dark:text-slate-400 uppercase text-[10px] font-semibold border-b border-slate-200 dark:border-slate-800">
+                <tr>
+                  <th className="py-3.5 px-4 whitespace-nowrap">Almacén</th>
+                  <th className="py-3.5 px-4 whitespace-nowrap">Código Producto</th>
+                  <th className="py-3.5 px-4 whitespace-nowrap">Descripción</th>
+                  <th className="py-3.5 px-4 text-right whitespace-nowrap">Existencia Actual</th>
+                  <th className="py-3.5 px-4 text-right whitespace-nowrap">Stock Reservado</th>
+                  <th className="py-3.5 px-4 text-right whitespace-nowrap">Disponible</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                {stockItems.map((item) => (
+                  <tr key={item.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40">
+                    <td className="py-3 px-4 font-semibold text-slate-800 dark:text-slate-200">{item.warehouse_name}</td>
+                    <td className="py-3 px-4 font-mono font-medium">{item.product_code}</td>
+                    <td className="py-3 px-4">{item.product_name}</td>
+                    <td className="py-3 px-4 text-right font-mono font-bold text-slate-900 dark:text-slate-100">{item.stock}</td>
+                    <td className="py-3 px-4 text-right font-mono text-amber-600 dark:text-amber-400">{item.reserved_stock}</td>
+                    <td className="py-3 px-4 text-right">
+                      <StockQuantityPill stock={item.stock - item.reserved_stock} unit="" />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 
       {/* Subtab 3: Kardex */}
       {activeSubTab === 'kardex' && (
         <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs overflow-hidden transition-colors">
-          <table className="w-full text-left text-xs text-slate-600 dark:text-slate-300">
-            <thead className="bg-slate-50 dark:bg-slate-800/70 text-slate-500 dark:text-slate-400 uppercase text-[10px] font-semibold border-b border-slate-200 dark:border-slate-800">
-              <tr>
-                <th className="py-3.5 px-4">Fecha / Hora</th>
-                <th className="py-3.5 px-4">Producto</th>
-                <th className="py-3.5 px-4">Almacén</th>
-                <th className="py-3.5 px-4">Tipo Movimiento</th>
-                <th className="py-3.5 px-4 text-right">Stock Previo</th>
-                <th className="py-3.5 px-4 text-right">Cantidad</th>
-                <th className="py-3.5 px-4 text-right">Nuevo Stock</th>
-                <th className="py-3.5 px-4">Motivo / Referencia</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-              {kardex.map((k) => (
-                <tr key={k.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40">
-                  <td className="py-3 px-4 text-slate-500 dark:text-slate-400 font-mono text-[11px]">{formatPeruDateTime(k.created_at)}</td>
-                  <td className="py-3 px-4 font-semibold text-slate-800 dark:text-slate-200">{k.product_name}</td>
-                  <td className="py-3 px-4">{k.warehouse_name}</td>
-                  <td className="py-3 px-4">
-                    <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-semibold ${
-                      k.movement_type === 'ENTRADA' ? 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800' :
-                      k.movement_type === 'SALIDA' ? 'bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-800' :
-                      'bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800'
-                    }`}>
-                      {k.movement_type}
-                    </span>
-                  </td>
-                  <td className="py-3 px-4 text-right font-mono">{k.previous_stock}</td>
-                  <td className="py-3 px-4 text-right font-mono font-bold">
-                    {k.movement_type === 'ENTRADA' ? `+${k.quantity}` : `-${k.quantity}`}
-                  </td>
-                  <td className="py-3 px-4 text-right font-mono font-bold text-slate-900 dark:text-slate-100">{k.new_stock}</td>
-                  <td className="py-3 px-4 text-slate-500 dark:text-slate-400">{k.notes || '-'}</td>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs text-slate-600 dark:text-slate-300">
+              <thead className="bg-slate-50 dark:bg-slate-800/70 text-slate-500 dark:text-slate-400 uppercase text-[10px] font-semibold border-b border-slate-200 dark:border-slate-800">
+                <tr>
+                  <th className="py-3.5 px-4 whitespace-nowrap">Fecha / Hora</th>
+                  <th className="py-3.5 px-4 whitespace-nowrap">Producto</th>
+                  <th className="py-3.5 px-4 whitespace-nowrap">Almacén</th>
+                  <th className="py-3.5 px-4 whitespace-nowrap">Tipo Movimiento</th>
+                  <th className="py-3.5 px-4 text-right whitespace-nowrap">Stock Previo</th>
+                  <th className="py-3.5 px-4 text-right whitespace-nowrap">Cantidad</th>
+                  <th className="py-3.5 px-4 text-right whitespace-nowrap">Nuevo Stock</th>
+                  <th className="py-3.5 px-4 whitespace-nowrap">Motivo / Referencia</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                {kardex.map((k) => (
+                  <tr key={k.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40">
+                    <td className="py-3 px-4 text-slate-500 dark:text-slate-400 font-mono text-[11px] whitespace-nowrap">{formatPeruDateTime(k.created_at)}</td>
+                    <td className="py-3 px-4 font-semibold text-slate-800 dark:text-slate-200">{k.product_name}</td>
+                    <td className="py-3 px-4">{k.warehouse_name}</td>
+                    <td className="py-3 px-4">
+                      <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-semibold ${
+                        k.movement_type === 'ENTRADA' ? 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800' :
+                        k.movement_type === 'SALIDA' ? 'bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-800' :
+                        'bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800'
+                      }`}>
+                        {k.movement_type}
+                      </span>
+                    </td>
+                    <td className="py-3 px-4 text-right font-mono">{k.previous_stock}</td>
+                    <td className="py-3 px-4 text-right font-mono font-bold">
+                      {k.movement_type === 'ENTRADA' ? `+${k.quantity}` : `-${k.quantity}`}
+                    </td>
+                    <td className="py-3 px-4 text-right font-mono font-bold text-slate-900 dark:text-slate-100">{k.new_stock}</td>
+                    <td className="py-3 px-4 text-slate-500 dark:text-slate-400">{k.notes || '-'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 

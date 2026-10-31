@@ -91,20 +91,20 @@ export const SuppliersModule: React.FC = () => {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">Maestro de Proveedores</h1>
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white tracking-tight">Maestro de Proveedores</h1>
           <p className="text-xs text-slate-500 dark:text-slate-400">Gestión de alianzas, mayoristas, fabricantes y cuentas por pagar.</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <button
             onClick={handleExportCSV}
-            className="flex items-center gap-2 px-3.5 py-2.5 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 font-semibold rounded-xl text-xs transition-colors shadow-xs"
+            className="flex-1 sm:flex-none justify-center flex items-center gap-2 px-3.5 py-2.5 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 font-semibold rounded-xl text-xs transition-colors shadow-xs"
           >
             <Download className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
             <span>Exportar CSV</span>
           </button>
           <button
             onClick={() => setIsModalOpen(true)}
-            className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl text-xs shadow-md shadow-indigo-600/20 transition-colors"
+            className="flex-1 sm:flex-none justify-center flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl text-xs shadow-md shadow-indigo-600/20 transition-colors"
           >
             <Plus className="w-4 h-4" />
             <span>Registrar Proveedor</span>
@@ -126,48 +126,50 @@ export const SuppliersModule: React.FC = () => {
       </div>
 
       <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs overflow-hidden transition-colors">
-        <table className="w-full text-left text-xs text-slate-600 dark:text-slate-300">
-          <thead className="bg-slate-50 dark:bg-slate-800/70 text-slate-500 dark:text-slate-400 uppercase text-[10px] font-semibold border-b border-slate-200 dark:border-slate-800">
-            <tr>
-              <th className="py-3.5 px-4">Documento</th>
-              <th className="py-3.5 px-4">Proveedor / Empresa</th>
-              <th className="py-3.5 px-4">Contacto Directo</th>
-              <th className="py-3.5 px-4">Teléfono / Email</th>
-              <th className="py-3.5 px-4">Dirección</th>
-              <th className="py-3.5 px-4 text-right">Por Pagar (CxP)</th>
-              <th className="py-3.5 px-4 text-center">Estado</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-            {filtered.map((s) => (
-              <tr key={s.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40">
-                <td className="py-3 px-4 font-mono font-medium text-slate-900 dark:text-slate-100">
-                  <span className="text-[10px] text-slate-400 mr-1">{s.document_type}:</span>{s.document_number}
-                </td>
-                <td className="py-3 px-4 font-semibold text-slate-800 dark:text-slate-200">{s.name}</td>
-                <td className="py-3 px-4 text-slate-600 dark:text-slate-400 flex items-center gap-1">
-                  <User className="w-3.5 h-3.5 text-slate-400" />
-                  {s.contact_name || '-'}
-                </td>
-                <td className="py-3 px-4">
-                  <div className="flex flex-col gap-0.5">
-                    {s.email && <span className="flex items-center gap-1 text-[11px] text-slate-500 dark:text-slate-400"><Mail className="w-3 h-3" /> {s.email}</span>}
-                    {s.phone && <span className="flex items-center gap-1 text-[11px] text-slate-500 dark:text-slate-400"><Phone className="w-3 h-3" /> {s.phone}</span>}
-                  </div>
-                </td>
-                <td className="py-3 px-4 text-slate-500 dark:text-slate-400 truncate max-w-xs">{s.address || '-'}</td>
-                <td className="py-3 px-4 text-right font-mono font-bold text-rose-600 dark:text-rose-400">
-                  S/. {s.current_balance.toFixed(2)}
-                </td>
-                <td className="py-3 px-4 text-center">
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
-                    Homologado
-                  </span>
-                </td>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs text-slate-600 dark:text-slate-300">
+            <thead className="bg-slate-50 dark:bg-slate-800/70 text-slate-500 dark:text-slate-400 uppercase text-[10px] font-semibold border-b border-slate-200 dark:border-slate-800">
+              <tr>
+                <th className="py-3.5 px-4 whitespace-nowrap">Documento</th>
+                <th className="py-3.5 px-4 whitespace-nowrap">Proveedor / Empresa</th>
+                <th className="py-3.5 px-4 whitespace-nowrap">Contacto Directo</th>
+                <th className="py-3.5 px-4 whitespace-nowrap">Teléfono / Email</th>
+                <th className="py-3.5 px-4 whitespace-nowrap">Dirección</th>
+                <th className="py-3.5 px-4 text-right whitespace-nowrap">Por Pagar (CxP)</th>
+                <th className="py-3.5 px-4 text-center whitespace-nowrap">Estado</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+              {filtered.map((s) => (
+                <tr key={s.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40">
+                  <td className="py-3 px-4 font-mono font-medium text-slate-900 dark:text-slate-100">
+                    <span className="text-[10px] text-slate-400 mr-1">{s.document_type}:</span>{s.document_number}
+                  </td>
+                  <td className="py-3 px-4 font-semibold text-slate-800 dark:text-slate-200">{s.name}</td>
+                  <td className="py-3 px-4 text-slate-600 dark:text-slate-400 flex items-center gap-1">
+                    <User className="w-3.5 h-3.5 text-slate-400" />
+                    {s.contact_name || '-'}
+                  </td>
+                  <td className="py-3 px-4">
+                    <div className="flex flex-col gap-0.5">
+                      {s.email && <span className="flex items-center gap-1 text-[11px] text-slate-500 dark:text-slate-400"><Mail className="w-3 h-3" /> {s.email}</span>}
+                      {s.phone && <span className="flex items-center gap-1 text-[11px] text-slate-500 dark:text-slate-400"><Phone className="w-3 h-3" /> {s.phone}</span>}
+                    </div>
+                  </td>
+                  <td className="py-3 px-4 text-slate-500 dark:text-slate-400 truncate max-w-xs">{s.address || '-'}</td>
+                  <td className="py-3 px-4 text-right font-mono font-bold text-rose-600 dark:text-rose-400">
+                    S/. {s.current_balance.toFixed(2)}
+                  </td>
+                  <td className="py-3 px-4 text-center">
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
+                      Homologado
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       <Modal

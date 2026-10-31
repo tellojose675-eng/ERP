@@ -1,11 +1,14 @@
 import React, { useEffect, useState } from 'react';
-import { Plus, Eye, Ban, Search, Download, Trash2, AlertTriangle, X } from 'lucide-react';
+import { Plus, Eye, Ban, Search, Download, Trash2, AlertTriangle, X, Upload, PackageOpen, ShoppingBag, Filter } from 'lucide-react';
 import { api } from '../../services/api';
 import { Purchase, Supplier, Product, Warehouse } from '../../types';
 import { Modal } from '../../components/Modal';
 import { exportToCSV } from '../../utils/exportToCSV';
+import { importCSVFlow } from '../../utils/importFromCSV';
 import { StockStatusBadge, StockQuantityPill } from '../../components/StockStatusBadge';
 import { formatPeruDate, formatPeruDateTime } from '../../utils/dateUtils';
+
+type PurchaseMode = 'normal' | 'low_stock';
 
 export const PurchasesModule: React.FC = () => {
   const [purchases, setPurchases] = useState<Purchase[]>([]);
@@ -19,6 +22,12 @@ export const PurchasesModule: React.FC = () => {
   // Modals
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [selectedPurchase, setSelectedPurchase] = useState<Purchase | null>(null);
+
+  // Modo de compra
+  const [purchaseMode, setPurchaseMode] = useState<PurchaseMode>('normal');
+  const [productSearch, setProductSearch] = useState('');
+  const [importLoading, setImportLoading] = useState(false);
+  const [importResult, setImportResult] = useState<string | null>(null);
 
   // Form
   const [supplierId, setSupplierId] = useState<number>(0);
@@ -217,6 +226,53 @@ export const PurchasesModule: React.FC = () => {
     exportToCSV(exportData, 'compras_proveedores');
   };
 
+  const handleImportCSV = async () => {
+    setImportLoading(true);
+    setImportResult(null);
+    try {
+      const result = await importCSVFlow();
+      if (!result) { setImportLoading(false); return; }
+      if (!result.success) {
+        setImportResult(`❌ ${result.errors.join(', ')}`);
+        setImportLoading(false);
+        return;
+      }
+      setImportResult(`✅ ${result.rowCount} filas leídas del CSV. Revisa los datos e importa manualmente.`);
+    } catch (err: any) {
+      setImportResult(`❌ Error: ${err.message}`);
+    } finally {
+      setImportLoading(false);
+    }
+  };
+
+  /** Activa el modo "Compra por Menor Stock" y precarga los productos críticos */
+  const handleOpenLowStockMode = () => {
+    const lowStockProds = products
+      .filter(p => (p.total_stock ?? 0) <= (p.min_stock ?? 0) && p.min_stock > 0)
+      .slice(0, 10);
+    if (lowStockProds.length === 0) {
+      alert('¡Todos los productos tienen stock suficiente en este momento!');
+      return;
+    }
+    // Precarga los ítems con cantidades sugeridas
+    const preloaded = lowStockProds.map(p => ({
+      product_id: p.id,
+      quantity: Math.max(1, Math.ceil((p.min_stock ?? 5) * 1.5)),
+      unit_price: p.purchase_price
+    }));
+    setItems(preloaded);
+    setPurchaseMode('low_stock');
+    setStockWarning(null);
+    setIsCreateOpen(true);
+  };
+
+  // Productos filtrados por búsqueda en modal
+  const filteredProductsForModal = products.filter(p =>
+    !productSearch ||
+    p.name.toLowerCase().includes(productSearch.toLowerCase()) ||
+    p.code.toLowerCase().includes(productSearch.toLowerCase())
+  );
+
   const filteredPurchases = purchases.filter(p => {
     const matchesSearch = p.purchase_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (p.supplier_name && p.supplier_name.toLowerCase().includes(searchTerm.toLowerCase()));
@@ -225,6 +281,7 @@ export const PurchasesModule: React.FC = () => {
   });
 
   const totals = calculateTotals();
+  const lowStockCount = products.filter(p => (p.total_stock ?? 0) <= (p.min_stock ?? 0) && p.min_stock > 0).length;
 
   return (
     <div className="space-y-6">
@@ -234,26 +291,64 @@ export const PurchasesModule: React.FC = () => {
           <h1 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">Compras & Adquisiciones</h1>
           <p className="text-xs text-slate-500 dark:text-slate-400">Órdenes de compra a mayoristas, recepción en almacén y cuentas por pagar.</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <button
             onClick={handleExportCSV}
             className="flex items-center gap-2 px-3.5 py-2.5 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 font-semibold rounded-xl text-xs transition-colors shadow-xs cursor-pointer"
           >
-            <Download className="w-4 h-4" />
+            <Download className="w-4 h-4 text-emerald-600" />
             <span>Exportar CSV</span>
           </button>
           <button
+            onClick={handleImportCSV}
+            disabled={importLoading}
+            className="flex items-center gap-2 px-3.5 py-2.5 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 font-semibold rounded-xl text-xs transition-colors shadow-xs cursor-pointer disabled:opacity-60"
+          >
+            <Upload className="w-4 h-4 text-sky-600" />
+            <span>{importLoading ? 'Leyendo...' : 'Importar CSV'}</span>
+          </button>
+          {/* Botón Compra por Menor Stock */}
+          <button
+            onClick={handleOpenLowStockMode}
+            className="relative flex items-center gap-2 px-4 py-2.5 bg-amber-500 hover:bg-amber-600 text-white font-semibold rounded-xl text-xs shadow-md shadow-amber-500/30 transition-all cursor-pointer"
+            title={`${lowStockCount} productos con stock crítico`}
+          >
+            <PackageOpen className="w-4 h-4" />
+            <span>Bajo Stock</span>
+            {lowStockCount > 0 && (
+              <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full">
+                {lowStockCount}
+              </span>
+            )}
+          </button>
+          {/* Botón Compra Normal */}
+          <button
             onClick={() => {
+              setPurchaseMode('normal');
               setStockWarning(null);
+              setItems([{ product_id: 0, quantity: 1, unit_price: 0 }]);
+              setProductSearch('');
               setIsCreateOpen(true);
             }}
             className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl text-xs shadow-md shadow-indigo-600/30 transition-all cursor-pointer"
           >
-            <Plus className="w-4 h-4" />
-            <span>Nueva Orden de Compra</span>
+            <ShoppingBag className="w-4 h-4" />
+            <span>Compra Normal</span>
           </button>
         </div>
       </div>
+
+      {/* Resultado importación */}
+      {importResult && (
+        <div className={`p-3 rounded-xl text-xs font-semibold border ${
+          importResult.startsWith('✅')
+            ? 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-200'
+            : 'bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800 text-red-800 dark:text-red-200'
+        }`}>
+          {importResult}
+          <button onClick={() => setImportResult(null)} className="ml-4 underline opacity-70 hover:opacity-100">Cerrar</button>
+        </div>
+      )}
 
       {/* Filter and Search */}
       <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs flex flex-col md:flex-row items-center justify-between gap-4 transition-colors">
@@ -363,14 +458,26 @@ export const PurchasesModule: React.FC = () => {
         </div>
       </div>
 
-      {/* Modal Nueva Compra con soporte de Múltiples Productos y Control de Límites */}
+      {/* Modal Nueva Compra */}
       <Modal
         isOpen={isCreateOpen}
-        onClose={() => setIsCreateOpen(false)}
-        title="Registrar Orden de Compra a Mayorista"
+        onClose={() => { setIsCreateOpen(false); setPurchaseMode('normal'); }}
+        title={purchaseMode === 'low_stock'
+          ? '🟠 Compra por Productos de Menor Stock'
+          : '🛒 Nueva Orden de Compra Normal'}
         maxWidth="max-w-4xl"
       >
         <form onSubmit={handleCreatePurchase} className="space-y-4">
+          {/* Banner de modo bajo stock */}
+          {purchaseMode === 'low_stock' && (
+            <div className="p-3.5 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 text-amber-800 dark:text-amber-200 text-xs font-semibold flex items-center gap-2">
+              <PackageOpen className="w-4 h-4 text-amber-600 shrink-0" />
+              <span>
+                <b>Modo: Compra por Bajo Stock.</b> Se han preseleccionado los {items.length} productos
+                con stock igual o menor al mínimo. Puedes ajustar cantidades antes de confirmar.
+              </span>
+            </div>
+          )}
           {/* Alerta de Stock / Límite */}
           {stockWarning && (
             <div className="p-3.5 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 text-amber-800 dark:text-amber-200 text-xs font-semibold flex items-center justify-between animate-in fade-in">
@@ -381,6 +488,19 @@ export const PurchasesModule: React.FC = () => {
               <button type="button" onClick={() => setStockWarning(null)} className="text-amber-700 hover:text-amber-900 p-1">
                 <X className="w-4 h-4" />
               </button>
+            </div>
+          )}
+          {/* Buscador de productos (solo modo normal) */}
+          {purchaseMode === 'normal' && (
+            <div className="relative">
+              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-3" />
+              <input
+                type="text"
+                placeholder="Filtrar productos al seleccionar en la orden..."
+                value={productSearch}
+                onChange={(e) => setProductSearch(e.target.value)}
+                className="w-full pl-8 pr-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
             </div>
           )}
 
@@ -475,7 +595,7 @@ export const PurchasesModule: React.FC = () => {
                         className="w-full p-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-slate-100 font-medium"
                       >
                         <option value={0}>-- Seleccionar Producto del Catálogo --</option>
-                        {products.map(p => (
+                        {(purchaseMode === 'normal' ? filteredProductsForModal : products).map(p => (
                           <option key={p.id} value={p.id}>
                             {p.code} - {p.name} [Stock Actual: {p.total_stock ?? 0} {p.unit || 'UND'}] (Costo: S/. {Number(p.purchase_price).toFixed(2)})
                           </option>
@@ -618,9 +738,13 @@ export const PurchasesModule: React.FC = () => {
             </button>
             <button
               type="submit"
-              className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-md shadow-indigo-600/30 cursor-pointer transition-all"
+              className={`px-6 py-2.5 text-white rounded-xl text-xs font-bold shadow-md cursor-pointer transition-all ${
+                purchaseMode === 'low_stock'
+                  ? 'bg-amber-500 hover:bg-amber-600 shadow-amber-500/30'
+                  : 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-600/30'
+              }`}
             >
-              Confirmar Adquisición
+              {purchaseMode === 'low_stock' ? '📦 Confirmar Reabastecimiento' : 'Confirmar Adquisición'}
             </button>
           </div>
         </form>
@@ -655,8 +779,8 @@ export const PurchasesModule: React.FC = () => {
 
             <div>
               <h4 className="font-bold text-slate-900 dark:text-white mb-2">Productos Recibidos</h4>
-              <div className="border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden">
-                <table className="w-full text-left text-xs">
+              <div className="border border-slate-200 dark:border-slate-800 rounded-xl overflow-x-auto">
+                <table className="w-full text-left text-xs min-w-[460px] sm:min-w-0">
                   <thead className="bg-slate-100 dark:bg-slate-800/80 font-semibold text-slate-600 dark:text-slate-300">
                     <tr>
                       <th className="p-3">Código</th>

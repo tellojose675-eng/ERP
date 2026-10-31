@@ -151,77 +151,79 @@ export const DocumentsPage: React.FC = () => {
       </div>
 
       <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs overflow-hidden transition-colors">
-        <table className="w-full text-left text-xs text-slate-600 dark:text-slate-300">
-          <thead className="bg-slate-50 dark:bg-slate-800/70 text-slate-500 dark:text-slate-400 uppercase text-[10px] font-semibold border-b border-slate-200 dark:border-slate-800">
-            <tr>
-              <th className="py-3.5 px-4">Archivo / Objeto</th>
-              <th className="py-3.5 px-4">Módulo Vinculado</th>
-              <th className="py-3.5 px-4">Bucket S3</th>
-              <th className="py-3.5 px-4">Tamaño</th>
-              <th className="py-3.5 px-4">Fecha Subida (Perú)</th>
-              <th className="py-3.5 px-4 text-center">Acciones</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-            {filtered.length === 0 ? (
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs text-slate-600 dark:text-slate-300">
+            <thead className="bg-slate-50 dark:bg-slate-800/70 text-slate-500 dark:text-slate-400 uppercase text-[10px] font-semibold border-b border-slate-200 dark:border-slate-800">
               <tr>
-                <td colSpan={6} className="py-8 text-center text-slate-400">
-                  No hay documentos almacenados en este momento.
-                </td>
+                <th className="py-3.5 px-4 whitespace-nowrap">Archivo / Objeto</th>
+                <th className="py-3.5 px-4 whitespace-nowrap">Módulo Vinculado</th>
+                <th className="py-3.5 px-4 whitespace-nowrap">Bucket S3</th>
+                <th className="py-3.5 px-4 whitespace-nowrap">Tamaño</th>
+                <th className="py-3.5 px-4 whitespace-nowrap">Fecha Subida (Perú)</th>
+                <th className="py-3.5 px-4 text-center whitespace-nowrap">Acciones</th>
               </tr>
-            ) : (
-              filtered.map((d) => (
-                <tr key={d.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40">
-                  <td className="py-3 px-4 flex items-center gap-2 font-medium text-slate-800 dark:text-slate-200">
-                    <FileText className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
-                    <span className="font-mono text-xs">{d.original_name}</span>
-                  </td>
-                  <td className="py-3 px-4">
-                    <span className="px-2 py-0.5 rounded-lg text-[10px] font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
-                      {d.entity_type} #{d.entity_id}
-                    </span>
-                  </td>
-                  <td className="py-3 px-4 font-mono text-slate-500 dark:text-slate-400">{d.s3_bucket || 's3-enterprisecloud'}</td>
-                  <td className="py-3 px-4 font-mono text-slate-500 dark:text-slate-400">
-                    {d.file_size ? `${(d.file_size / 1024).toFixed(1)} KB` : 'N/A'}
-                  </td>
-                  <td className="py-3 px-4 text-slate-500 dark:text-slate-400 font-mono text-[11px]">
-                    {formatPeruDateTime(d.created_at)}
-                  </td>
-                  <td className="py-3 px-4 text-center">
-                    <div className="flex items-center justify-center gap-1.5 flex-wrap">
-                      <button
-                        onClick={() => handleView(d)}
-                        className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 font-semibold rounded-xl text-[11px] transition-colors border border-emerald-200 dark:border-emerald-800 cursor-pointer shadow-xs"
-                        title="Visualizar documento en pantalla"
-                      >
-                        <Eye className="w-3.5 h-3.5" />
-                        <span>Visualizar</span>
-                      </button>
-                      <button
-                        onClick={() => handleDownload(d)}
-                        className="inline-flex items-center gap-1 px-2.5 py-1 bg-sky-50 dark:bg-sky-950/40 text-sky-700 dark:text-sky-400 hover:bg-sky-100 dark:hover:bg-sky-900/60 font-semibold rounded-xl text-[11px] transition-colors border border-sky-200 dark:border-sky-800 cursor-pointer shadow-xs"
-                        title="Descargar archivo a tu equipo"
-                      >
-                        <Download className="w-3.5 h-3.5" />
-                        <span>Descargar</span>
-                      </button>
-                      <button
-                        onClick={() => handleDelete(d.id, d.original_name)}
-                        disabled={deletingId === d.id}
-                        className="inline-flex items-center gap-1 px-2 py-1 bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900/60 font-semibold rounded-xl text-[11px] transition-colors border border-rose-200 dark:border-rose-800 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-                        title="Eliminar documento"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                        <span>{deletingId === d.id ? '...' : 'Eliminar'}</span>
-                      </button>
-                    </div>
+            </thead>
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+              {filtered.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="py-8 text-center text-slate-400">
+                    No hay documentos almacenados en este momento.
                   </td>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+              ) : (
+                filtered.map((d) => (
+                  <tr key={d.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40">
+                    <td className="py-3 px-4 flex items-center gap-2 font-medium text-slate-800 dark:text-slate-200">
+                      <FileText className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
+                      <span className="font-mono text-xs">{d.original_name}</span>
+                    </td>
+                    <td className="py-3 px-4 whitespace-nowrap">
+                      <span className="px-2 py-0.5 rounded-lg text-[10px] font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                        {d.entity_type} #{d.entity_id}
+                      </span>
+                    </td>
+                    <td className="py-3 px-4 font-mono text-slate-500 dark:text-slate-400 whitespace-nowrap">{d.s3_bucket || 's3-enterprisecloud'}</td>
+                    <td className="py-3 px-4 font-mono text-slate-500 dark:text-slate-400 whitespace-nowrap">
+                      {d.file_size ? `${(d.file_size / 1024).toFixed(1)} KB` : 'N/A'}
+                    </td>
+                    <td className="py-3 px-4 text-slate-500 dark:text-slate-400 font-mono text-[11px] whitespace-nowrap">
+                      {formatPeruDateTime(d.created_at)}
+                    </td>
+                    <td className="py-3 px-4 text-center">
+                      <div className="flex items-center justify-center gap-1.5 flex-wrap">
+                        <button
+                          onClick={() => handleView(d)}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 font-semibold rounded-xl text-[11px] transition-colors border border-emerald-200 dark:border-emerald-800 cursor-pointer shadow-xs whitespace-nowrap"
+                          title="Visualizar documento en pantalla"
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                          <span>Visualizar</span>
+                        </button>
+                        <button
+                          onClick={() => handleDownload(d)}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 bg-sky-50 dark:bg-sky-950/40 text-sky-700 dark:text-sky-400 hover:bg-sky-100 dark:hover:bg-sky-900/60 font-semibold rounded-xl text-[11px] transition-colors border border-sky-200 dark:border-sky-800 cursor-pointer shadow-xs whitespace-nowrap"
+                          title="Descargar archivo a tu equipo"
+                        >
+                          <Download className="w-3.5 h-3.5" />
+                          <span>Descargar</span>
+                        </button>
+                        <button
+                          onClick={() => handleDelete(d.id, d.original_name)}
+                          disabled={deletingId === d.id}
+                          className="inline-flex items-center gap-1 px-2 py-1 bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900/60 font-semibold rounded-xl text-[11px] transition-colors border border-rose-200 dark:border-rose-800 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer whitespace-nowrap"
+                          title="Eliminar documento"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          <span>{deletingId === d.id ? '...' : 'Eliminar'}</span>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       <Modal

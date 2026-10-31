@@ -80,7 +80,7 @@ export const UsersPage: React.FC = () => {
           <h1 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">Administración & IAM</h1>
           <p className="text-xs text-slate-500 dark:text-slate-400">Control de identidad y accesos basado en roles (RBAC) y credenciales.</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <button
             onClick={handleExportCSV}
             className="flex items-center gap-2 px-3.5 py-2.5 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 font-semibold rounded-xl text-xs transition-colors shadow-xs"
@@ -99,7 +99,8 @@ export const UsersPage: React.FC = () => {
       </div>
 
       <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs overflow-hidden transition-colors">
-        <table className="w-full text-left text-xs text-slate-600 dark:text-slate-300">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs text-slate-600 dark:text-slate-300">
           <thead className="bg-slate-50 dark:bg-slate-800/70 text-slate-500 dark:text-slate-400 uppercase text-[10px] font-semibold border-b border-slate-200 dark:border-slate-800">
             <tr>
               <th className="py-3.5 px-4">Usuario</th>
@@ -137,6 +138,7 @@ export const UsersPage: React.FC = () => {
             ))}
           </tbody>
         </table>
+        </div>
       </div>
 
       <Modal
