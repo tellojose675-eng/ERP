@@ -3,11 +3,12 @@ import {
   TrendingUp, ShoppingCart, Receipt, AlertTriangle, Boxes,
   ArrowUpRight, ArrowDownRight, CheckCircle2, Trash2, AlertOctagon,
   X, Loader2, Sparkles, Tag, Users, Factory, Warehouse, Package,
-  ClipboardList, BadgeDollarSign, BarChart3, CircleDot,
+  ClipboardList, BadgeDollarSign, BarChart3, CircleDot, Download, Upload, FileSpreadsheet,
 } from 'lucide-react';
 import { api } from '../services/api';
 import { DashboardMetrics } from '../types';
 import { StockStatusBadge, StockQuantityPill } from '../components/StockStatusBadge';
+import { DashboardCSVHubModal } from '../components/DashboardCSVHubModal';
 
 // ────────────────────────────────────────────────────────────────────────────────
 // Simulation data
@@ -112,6 +113,8 @@ export const DashboardPage: React.FC = () => {
   const [resetting, setResetting]             = useState(false);
   const [toastMessage, setToastMessage]       = useState<string | null>(null);
   const [toastType, setToastType]             = useState<'success' | 'info'>('success');
+  const [isCsvModalOpen, setIsCsvModalOpen]   = useState(false);
+  const [csvModalMode, setCsvModalMode]       = useState<'import' | 'export'>('import');
 
   // Inline simulation state
   const [simRunning, setSimRunning]   = useState(false);
@@ -310,7 +313,35 @@ export const DashboardPage: React.FC = () => {
               Métricas operativas en tiempo real, trazabilidad de compras y ventas, rotación de existencias y flujo de tesorería.
             </p>
           </div>
-          <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto">
+          <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto flex-wrap sm:flex-nowrap">
+            {/* Importar CSV */}
+            <button
+              id="btn-importar-csv-dashboard"
+              onClick={() => {
+                setCsvModalMode('import');
+                setIsCsvModalOpen(true);
+              }}
+              className="flex-1 sm:flex-none justify-center flex items-center gap-2 px-3.5 sm:px-4 py-2.5 bg-sky-600/90 hover:bg-sky-500 border border-sky-400/40 rounded-xl text-xs font-bold shadow-lg shadow-sky-950/40 transition-all cursor-pointer text-white"
+              title="Importar catálogo de productos, clientes o proveedores desde un archivo CSV"
+            >
+              <Upload className="w-4 h-4" />
+              <span>Importar CSV</span>
+            </button>
+
+            {/* Exportar CSV */}
+            <button
+              id="btn-exportar-csv-dashboard"
+              onClick={() => {
+                setCsvModalMode('export');
+                setIsCsvModalOpen(true);
+              }}
+              className="flex-1 sm:flex-none justify-center flex items-center gap-2 px-3.5 sm:px-4 py-2.5 bg-emerald-600/90 hover:bg-emerald-500 border border-emerald-400/40 rounded-xl text-xs font-bold shadow-lg shadow-emerald-950/40 transition-all cursor-pointer text-white"
+              title="Descargar reportes ejecutivos, catálogo y clientes en formato CSV"
+            >
+              <Download className="w-4 h-4" />
+              <span>Exportar CSV</span>
+            </button>
+
             {/* Simulación button */}
             <button
               id="btn-simulacion"
@@ -634,6 +665,20 @@ export const DashboardPage: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* ══════════════════════════════════════════════════════════
+          CENTRO CSV (IMPORTAR / EXPORTAR) MODAL
+      ══════════════════════════════════════════════════════════ */}
+      <DashboardCSVHubModal
+        isOpen={isCsvModalOpen}
+        onClose={() => setIsCsvModalOpen(false)}
+        initialMode={csvModalMode}
+        metrics={metrics}
+        onDataImported={() => {
+          fetchMetrics();
+          showToast('✅ Datos importados correctamente y sincronizados en todos los módulos.', 'success');
+        }}
+      />
     </div>
   );
 };
