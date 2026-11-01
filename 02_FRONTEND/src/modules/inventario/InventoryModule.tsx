@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { Boxes, Plus, ArrowLeftRight, Sliders, History, Search, Download, Filter, CheckCircle2, PlusCircle, Loader2, X, Upload, Zap, Copy, Sparkles, TrendingUp, RefreshCw } from 'lucide-react';
+import { Boxes, Plus, ArrowLeftRight, Sliders, History, Search, Download, Filter, CheckCircle2, PlusCircle, Loader2, X, Upload, Zap, Copy, Sparkles, TrendingUp, RefreshCw, Building2, Package, AlertTriangle, DollarSign } from 'lucide-react';
 import { api } from '../../services/api';
 import { Product, Warehouse, InventoryItem, InventoryMovement, Category } from '../../types';
 import { Modal } from '../../components/Modal';
@@ -20,6 +20,18 @@ export const InventoryModule: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState<number | 'ALL'>('ALL');
   const [importLoading, setImportLoading] = useState(false);
   const [importResult, setImportResult] = useState<string | null>(null);
+
+  // Warehouse separation states
+  const [selectedStockWhId, setSelectedStockWhId] = useState<number | 'ALL'>('ALL');
+  const [stockSearchTerm, setStockSearchTerm] = useState('');
+  const [stockStatusFilter, setStockStatusFilter] = useState<'ALL' | 'IN_STOCK' | 'LOW' | 'OUT'>('ALL');
+
+  // New warehouse modal
+  const [isWarehouseModalOpen, setIsWarehouseModalOpen] = useState(false);
+  const [newWhCode, setNewWhCode] = useState('');
+  const [newWhName, setNewWhName] = useState('');
+  const [newWhLocation, setNewWhLocation] = useState('');
+  const [isSavingWh, setIsSavingWh] = useState(false);
 
   // Modals
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
@@ -368,7 +380,7 @@ export const InventoryModule: React.FC = () => {
       }));
       exportToCSV(exportData, 'catalogo_productos');
     } else if (activeSubTab === 'stock') {
-      const exportData = stockItems.map(s => ({
+      const exportData = filteredStockItems.map(s => ({
         Almacen: s.warehouse_name,
         Codigo: s.product_code,
         Producto: s.product_name,
@@ -376,7 +388,7 @@ export const InventoryModule: React.FC = () => {
         Reservado: s.reserved_stock,
         Disponible: s.stock - s.reserved_stock
       }));
-      exportToCSV(exportData, 'stock_por_almacen');
+      exportToCSV(exportData, selectedStockWhId === 'ALL' ? 'stock_todos_almacenes' : `stock_${activeWarehouseObj?.name || 'almacen'}`);
     } else if (activeSubTab === 'kardex') {
       const exportData = kardex.map(k => ({
         Fecha: formatPeruDateTime(k.created_at),
@@ -443,6 +455,62 @@ export const InventoryModule: React.FC = () => {
       setImportLoading(false);
     }
   };
+
+  const handleCreateWarehouse = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newWhCode.trim() || !newWhName.trim()) {
+      alert('Código y nombre de almacén son obligatorios');
+      return;
+    }
+    try {
+      setIsSavingWh(true);
+      const created = await api.createWarehouse({
+        code: newWhCode.trim().toUpperCase(),
+        name: newWhName.trim(),
+        location: newWhLocation.trim() || undefined
+      });
+      setIsWarehouseModalOpen(false);
+      setNewWhCode('');
+      setNewWhName('');
+      setNewWhLocation('');
+      await loadAll();
+      if (created?.id) {
+        setSelectedStockWhId(created.id);
+      }
+    } catch (err: any) {
+      alert(err.message || 'Error al registrar almacén');
+    } finally {
+      setIsSavingWh(false);
+    }
+  };
+
+  // Cálculos dinámicos por almacén seleccionado
+  const currentWhStock = stockItems.filter(item => selectedStockWhId === 'ALL' || item.warehouse_id === selectedStockWhId);
+  const totalPhysicalStock = currentWhStock.reduce((acc, it) => acc + (it.stock || 0), 0);
+  const totalReservedStock = currentWhStock.reduce((acc, it) => acc + (it.reserved_stock || 0), 0);
+  const totalAvailableStock = totalPhysicalStock - totalReservedStock;
+  const totalValuation = currentWhStock.reduce((acc, it) => {
+    const p = products.find(prod => prod.id === it.product_id);
+    return acc + (it.stock || 0) * (p?.purchase_price || 0);
+  }, 0);
+  const activeWarehouseObj = selectedStockWhId === 'ALL' ? null : warehouses.find(w => w.id === selectedStockWhId);
+
+  const filteredStockItems = currentWhStock.filter(item => {
+    const matchesSearch = !stockSearchTerm.trim() || 
+      (item.product_name?.toLowerCase().includes(stockSearchTerm.toLowerCase()) ||
+       item.product_code?.toLowerCase().includes(stockSearchTerm.toLowerCase()) ||
+       item.warehouse_name?.toLowerCase().includes(stockSearchTerm.toLowerCase()));
+    
+    const product = products.find(p => p.id === item.product_id);
+    const minStock = product?.min_stock || 5;
+    const isOut = item.stock <= 0;
+    const isLow = item.stock > 0 && item.stock <= minStock;
+    
+    if (stockStatusFilter === 'OUT') return matchesSearch && isOut;
+    if (stockStatusFilter === 'LOW') return matchesSearch && isLow;
+    if (stockStatusFilter === 'IN_STOCK') return matchesSearch && !isOut && !isLow;
+    return matchesSearch;
+  });
 
   const filteredProducts = products.filter(p => {
     const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -815,36 +883,259 @@ export const InventoryModule: React.FC = () => {
         </div>
       )}
 
-      {/* Subtab 2: Stock por Almacén */}
+      {/* Subtab 2: Stock por Almacén con Pestañas y Métricas */}
       {activeSubTab === 'stock' && (
-        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs overflow-hidden transition-colors">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs text-slate-600 dark:text-slate-300">
-              <thead className="bg-slate-50 dark:bg-slate-800/70 text-slate-500 dark:text-slate-400 uppercase text-[10px] font-semibold border-b border-slate-200 dark:border-slate-800">
-                <tr>
-                  <th className="py-3.5 px-4 whitespace-nowrap">Almacén</th>
-                  <th className="py-3.5 px-4 whitespace-nowrap">Código Producto</th>
-                  <th className="py-3.5 px-4 whitespace-nowrap">Descripción</th>
-                  <th className="py-3.5 px-4 text-right whitespace-nowrap">Existencia Actual</th>
-                  <th className="py-3.5 px-4 text-right whitespace-nowrap">Stock Reservado</th>
-                  <th className="py-3.5 px-4 text-right whitespace-nowrap">Disponible</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                {stockItems.map((item) => (
-                  <tr key={item.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40">
-                    <td className="py-3 px-4 font-semibold text-slate-800 dark:text-slate-200">{item.warehouse_name}</td>
-                    <td className="py-3 px-4 font-mono font-medium">{item.product_code}</td>
-                    <td className="py-3 px-4">{item.product_name}</td>
-                    <td className="py-3 px-4 text-right font-mono font-bold text-slate-900 dark:text-slate-100">{item.stock}</td>
-                    <td className="py-3 px-4 text-right font-mono text-amber-600 dark:text-amber-400">{item.reserved_stock}</td>
-                    <td className="py-3 px-4 text-right">
-                      <StockQuantityPill stock={item.stock - item.reserved_stock} unit="" />
-                    </td>
+        <div className="space-y-4">
+          {/* Barra de Pestañas por Almacén */}
+          <div className="flex flex-wrap items-center justify-between gap-3 bg-white dark:bg-slate-900 p-3.5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs">
+            <div className="flex items-center gap-2 overflow-x-auto pb-1 max-w-full">
+              {/* Pestaña: Todos */}
+              <button
+                onClick={() => setSelectedStockWhId('ALL')}
+                className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap ${
+                  selectedStockWhId === 'ALL'
+                    ? 'bg-sky-600 text-white shadow-md shadow-sky-600/20'
+                    : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+                }`}
+              >
+                <Boxes className="w-3.5 h-3.5" />
+                <span>Vista Consolidada (Todos)</span>
+                <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${
+                  selectedStockWhId === 'ALL' ? 'bg-sky-700 text-sky-100' : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
+                }`}>
+                  {stockItems.length}
+                </span>
+              </button>
+
+              {/* Pestaña por cada Almacén individual */}
+              {warehouses.map(wh => {
+                const whItemCount = stockItems.filter(s => s.warehouse_id === wh.id).length;
+                const isSelected = selectedStockWhId === wh.id;
+                return (
+                  <button
+                    key={wh.id}
+                    onClick={() => setSelectedStockWhId(wh.id)}
+                    className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap ${
+                      isSelected
+                        ? 'bg-sky-600 text-white shadow-md shadow-sky-600/20'
+                        : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+                    }`}
+                  >
+                    <Building2 className="w-3.5 h-3.5" />
+                    <span>{wh.name}</span>
+                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-mono ${
+                      isSelected ? 'bg-sky-700 text-sky-100' : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
+                    }`}>
+                      {whItemCount}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            <button
+              onClick={() => setIsWarehouseModalOpen(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-2 bg-slate-900 hover:bg-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700 text-white rounded-xl text-xs font-semibold shadow-xs transition-colors cursor-pointer shrink-0"
+              title="Registrar una nueva sede o almacén"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>Nuevo Almacén</span>
+            </button>
+          </div>
+
+          {/* KPI Cards del Almacén Seleccionado */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-sky-50 dark:bg-sky-950/40 text-sky-600 dark:text-sky-400 flex items-center justify-center shrink-0">
+                <Package className="w-5 h-5" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 truncate">
+                  {selectedStockWhId === 'ALL' ? 'Total Variedad Global' : `Productos en ${activeWarehouseObj?.name}`}
+                </p>
+                <p className="text-lg font-bold text-slate-900 dark:text-white font-mono">{currentWhStock.length} ítems</p>
+              </div>
+            </div>
+
+            <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+                <Boxes className="w-5 h-5" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 truncate">Existencia Física</p>
+                <p className="text-lg font-bold text-emerald-600 dark:text-emerald-400 font-mono">{totalPhysicalStock.toLocaleString()} UND</p>
+              </div>
+            </div>
+
+            <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+                <Sliders className="w-5 h-5" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 truncate">Disponible vs Reservado</p>
+                <p className="text-sm font-bold text-slate-900 dark:text-white font-mono truncate">
+                  <span className="text-sky-600 dark:text-sky-400">{totalAvailableStock.toLocaleString()}</span>
+                  <span className="text-xs text-slate-400 font-normal"> / {totalReservedStock} res.</span>
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
+                <DollarSign className="w-5 h-5" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 truncate">Valorización a Costo</p>
+                <p className="text-base font-bold text-indigo-600 dark:text-indigo-400 font-mono truncate">
+                  S/. {totalValuation.toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Filtros y Buscador dentro del Almacén */}
+          <div className="bg-white dark:bg-slate-900 p-3.5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs flex flex-col md:flex-row items-center justify-between gap-3">
+            <div className="relative flex-1 w-full max-w-md">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+              <input
+                type="text"
+                placeholder={selectedStockWhId === 'ALL' ? "Buscar producto en todos los almacenes..." : `Buscar producto en ${activeWarehouseObj?.name}...`}
+                value={stockSearchTerm}
+                onChange={(e) => setStockSearchTerm(e.target.value)}
+                className="w-full pl-9 pr-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-sky-500"
+              />
+            </div>
+
+            <div className="flex items-center gap-1.5 overflow-x-auto w-full md:w-auto">
+              <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 shrink-0 mr-1">Estado:</span>
+              <button
+                onClick={() => setStockStatusFilter('ALL')}
+                className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer whitespace-nowrap ${
+                  stockStatusFilter === 'ALL'
+                    ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900'
+                    : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200'
+                }`}
+              >
+                Todos ({currentWhStock.length})
+              </button>
+              <button
+                onClick={() => setStockStatusFilter('IN_STOCK')}
+                className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer whitespace-nowrap ${
+                  stockStatusFilter === 'IN_STOCK'
+                    ? 'bg-emerald-600 text-white'
+                    : 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100'
+                }`}
+              >
+                Disponibles
+              </button>
+              <button
+                onClick={() => setStockStatusFilter('LOW')}
+                className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer whitespace-nowrap ${
+                  stockStatusFilter === 'LOW'
+                    ? 'bg-amber-600 text-white'
+                    : 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 hover:bg-amber-100'
+                }`}
+              >
+                Stock Bajo
+              </button>
+              <button
+                onClick={() => setStockStatusFilter('OUT')}
+                className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer whitespace-nowrap ${
+                  stockStatusFilter === 'OUT'
+                    ? 'bg-rose-600 text-white'
+                    : 'bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 hover:bg-rose-100'
+                }`}
+              >
+                Agotados
+              </button>
+            </div>
+          </div>
+
+          {/* Tabla de Stock Exclusiva del Almacén */}
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs overflow-hidden transition-colors">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs text-slate-600 dark:text-slate-300">
+                <thead className="bg-slate-50 dark:bg-slate-800/70 text-slate-500 dark:text-slate-400 uppercase text-[10px] font-semibold border-b border-slate-200 dark:border-slate-800">
+                  <tr>
+                    {selectedStockWhId === 'ALL' && <th className="py-3.5 px-4 whitespace-nowrap">Almacén</th>}
+                    <th className="py-3.5 px-4 whitespace-nowrap">Código SKU</th>
+                    <th className="py-3.5 px-4 whitespace-nowrap">Producto</th>
+                    <th className="py-3.5 px-4 text-center whitespace-nowrap">Unidad</th>
+                    <th className="py-3.5 px-4 text-right whitespace-nowrap">Costo Unit.</th>
+                    <th className="py-3.5 px-4 text-right whitespace-nowrap">Existencia Física</th>
+                    <th className="py-3.5 px-4 text-right whitespace-nowrap">Reservado</th>
+                    <th className="py-3.5 px-4 text-right whitespace-nowrap">Disponible</th>
+                    <th className="py-3.5 px-4 text-right whitespace-nowrap">Valorizado S/.</th>
+                    <th className="py-3.5 px-4 text-center whitespace-nowrap">Estado</th>
+                    <th className="py-3.5 px-4 text-center whitespace-nowrap">Acción</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                  {filteredStockItems.length === 0 ? (
+                    <tr>
+                      <td colSpan={selectedStockWhId === 'ALL' ? 11 : 10} className="py-8 text-center text-slate-400 text-xs">
+                        No se encontraron existencias en este almacén con los filtros aplicados.
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredStockItems.map((item) => {
+                      const prod = products.find(p => p.id === item.product_id);
+                      const unit = prod?.unit || 'UND';
+                      const cost = prod?.purchase_price || 0;
+                      const valTotal = (item.stock || 0) * cost;
+                      const available = item.stock - item.reserved_stock;
+                      return (
+                        <tr key={item.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition-colors">
+                          {selectedStockWhId === 'ALL' && (
+                            <td className="py-3 px-4 font-semibold text-slate-800 dark:text-slate-200 whitespace-nowrap">
+                              <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-[11px]">
+                                <Building2 className="w-3.5 h-3.5 text-slate-400" />
+                                {item.warehouse_name}
+                              </span>
+                            </td>
+                          )}
+                          <td className="py-3 px-4 font-mono font-medium text-slate-900 dark:text-slate-100 whitespace-nowrap">{item.product_code}</td>
+                          <td className="py-3 px-4 font-medium text-slate-800 dark:text-slate-200">{item.product_name}</td>
+                          <td className="py-3 px-4 text-center">{unit}</td>
+                          <td className="py-3 px-4 text-right font-mono text-slate-500">S/. {cost.toFixed(2)}</td>
+                          <td className="py-3 px-4 text-right font-mono font-bold text-slate-900 dark:text-slate-100">{item.stock}</td>
+                          <td className="py-3 px-4 text-right font-mono text-amber-600 dark:text-amber-400">{item.reserved_stock}</td>
+                          <td className="py-3 px-4 text-right">
+                            <StockQuantityPill stock={available} unit={unit} />
+                          </td>
+                          <td className="py-3 px-4 text-right font-mono font-bold text-indigo-700 dark:text-indigo-400">
+                            S/. {valTotal.toFixed(2)}
+                          </td>
+                          <td className="py-3 px-4 text-center">
+                            <StockStatusBadge stock={available} />
+                          </td>
+                          <td className="py-3 px-4 text-center">
+                            <button
+                              onClick={() => {
+                                setQuickProduct({
+                                  id: item.product_id,
+                                  name: item.product_name || '',
+                                  code: item.product_code || ''
+                                });
+                                setQuickWhId(item.warehouse_id);
+                                setQuickQty(10);
+                                setQuickNotes('');
+                                setQuickSuccess(false);
+                              }}
+                              className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:hover:bg-emerald-950/70 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 rounded-lg text-[10px] font-bold transition-colors cursor-pointer whitespace-nowrap"
+                              title="Ingresar stock directamente a este almacén"
+                            >
+                              <PlusCircle className="w-3 h-3" />
+                              + Stock
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       )}
@@ -1252,6 +1543,69 @@ export const InventoryModule: React.FC = () => {
                 <span>Guardar y Cerrar</span>
               </button>
             </div>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Modal Nuevo Almacén */}
+      <Modal
+        isOpen={isWarehouseModalOpen}
+        onClose={() => setIsWarehouseModalOpen(false)}
+        title="Crear Nueva Sede o Almacén"
+        maxWidth="max-w-md"
+      >
+        <form onSubmit={handleCreateWarehouse} className="space-y-3.5">
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Código del Almacén *</label>
+            <input
+              type="text"
+              required
+              placeholder="ej: ALM-SUR-01"
+              value={newWhCode}
+              onChange={(e) => setNewWhCode(e.target.value)}
+              className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-mono font-bold uppercase text-slate-900 dark:text-slate-100"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Nombre de la Sede / Almacén *</label>
+            <input
+              type="text"
+              required
+              placeholder="ej: Almacén Secundario Arequipa"
+              value={newWhName}
+              onChange={(e) => setNewWhName(e.target.value)}
+              className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-slate-100 font-medium"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Dirección / Ubicación Física (Opcional)</label>
+            <input
+              type="text"
+              placeholder="ej: Av. Ejército 405, Cayma, Arequipa"
+              value={newWhLocation}
+              onChange={(e) => setNewWhLocation(e.target.value)}
+              className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-slate-100"
+            />
+          </div>
+
+          <div className="flex justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
+            <button
+              type="button"
+              onClick={() => setIsWarehouseModalOpen(false)}
+              className="px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer"
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              disabled={isSavingWh}
+              className="px-5 py-2.5 bg-sky-600 hover:bg-sky-700 disabled:opacity-60 text-white rounded-xl text-xs font-bold shadow-md shadow-sky-600/20 cursor-pointer flex items-center gap-1.5"
+            >
+              {isSavingWh ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
+              <span>Guardar Almacén</span>
+            </button>
           </div>
         </form>
       </Modal>
