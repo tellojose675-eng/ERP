@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { Boxes, Plus, ArrowLeftRight, Sliders, History, Search, Download, Filter, CheckCircle2, PlusCircle, Loader2, X, Upload } from 'lucide-react';
+import React, { useEffect, useState, useRef } from 'react';
+import { Boxes, Plus, ArrowLeftRight, Sliders, History, Search, Download, Filter, CheckCircle2, PlusCircle, Loader2, X, Upload, Zap, Copy, Sparkles, TrendingUp, RefreshCw } from 'lucide-react';
 import { api } from '../../services/api';
 import { Product, Warehouse, InventoryItem, InventoryMovement, Category } from '../../types';
 import { Modal } from '../../components/Modal';
@@ -23,6 +23,9 @@ export const InventoryModule: React.FC = () => {
 
   // Modals
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
+  const [isSavingProduct, setIsSavingProduct] = useState(false);
+  const [productSuccessToast, setProductSuccessToast] = useState<string | null>(null);
+  const nameInputRef = useRef<HTMLInputElement | null>(null);
 
   // New product form
   const [newCode, setNewCode] = useState('');
@@ -32,6 +35,23 @@ export const InventoryModule: React.FC = () => {
   const [newCost, setNewCost] = useState(0);
   const [newPrice, setNewPrice] = useState(0);
   const [newMinStock, setNewMinStock] = useState(5);
+  // Initial stock in modal
+  const [withInitialStock, setWithInitialStock] = useState(false);
+  const [initialStockQty, setInitialStockQty] = useState(10);
+  const [initialStockWhId, setInitialStockWhId] = useState<number>(1);
+
+  // Quick inline add bar
+  const [isQuickBarVisible, setIsQuickBarVisible] = useState(true);
+  const [quickAddCode, setQuickAddCode] = useState('');
+  const [quickAddName, setQuickAddName] = useState('');
+  const [quickAddCatId, setQuickAddCatId] = useState<number>(1);
+  const [quickAddUnit, setQuickAddUnit] = useState('UND');
+  const [quickAddCost, setQuickAddCost] = useState<number>(0);
+  const [quickAddPrice, setQuickAddPrice] = useState<number>(0);
+  const [quickAddStock, setQuickAddStock] = useState<number>(0);
+  const [quickAddWhId, setQuickAddWhId] = useState<number>(1);
+  const [isQuickAdding, setIsQuickAdding] = useState(false);
+  const quickNameInputRef = useRef<HTMLInputElement | null>(null);
 
   // Operation forms
   const [adjProductId, setAdjProductId] = useState<number>(1);
@@ -53,6 +73,40 @@ export const InventoryModule: React.FC = () => {
   const [quickLoading, setQuickLoading] = useState(false);
   const [quickSuccess, setQuickSuccess] = useState(false);
 
+  // Auto-SKU generator helper
+  const generateSKU = (catId?: number, currentProducts: Product[] = products): string => {
+    const targetCatId = catId || newCategoryId;
+    const cat = categories.find(c => c.id === targetCatId);
+    let prefix = 'PRD';
+    if (cat && cat.name) {
+      const cleanName = cat.name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
+      const words = cleanName.split(/[\s-]+/).filter(Boolean);
+      if (words.length >= 2) {
+        prefix = (words[0].substring(0, 2) + words[1].substring(0, 2)).substring(0, 4);
+      } else if (cleanName.length >= 3) {
+        prefix = cleanName.substring(0, 3);
+      }
+    }
+
+    let maxNum = 0;
+    const prefixRegex = new RegExp(`^${prefix}-(\\d+)`, 'i');
+    currentProducts.forEach(p => {
+      const m = p.code.match(prefixRegex);
+      if (m) {
+        const num = parseInt(m[1], 10);
+        if (num > maxNum) maxNum = num;
+      }
+    });
+
+    let nextNum = maxNum + 1;
+    let candidate = `${prefix}-${String(nextNum).padStart(3, '0')}`;
+    while (currentProducts.some(p => p.code.toUpperCase() === candidate.toUpperCase())) {
+      nextNum++;
+      candidate = `${prefix}-${String(nextNum).padStart(3, '0')}`;
+    }
+    return candidate;
+  };
+
   const loadAll = async () => {
     try {
       setLoading(true);
@@ -72,8 +126,15 @@ export const InventoryModule: React.FC = () => {
         setAdjProductId(prods[0].id);
         setTransProductId(prods[0].id);
       }
-      if (cats.length > 0) setNewCategoryId(cats[0].id);
-      if (whs.length > 0) setQuickWhId(whs[0].id);
+      if (cats.length > 0) {
+        setNewCategoryId(cats[0].id);
+        setQuickAddCatId(cats[0].id);
+      }
+      if (whs.length > 0) {
+        setQuickWhId(whs[0].id);
+        setInitialStockWhId(whs[0].id);
+        setQuickAddWhId(whs[0].id);
+      }
     } catch (err) {
       console.error(err);
     } finally {
@@ -92,24 +153,142 @@ export const InventoryModule: React.FC = () => {
     };
   }, []);
 
-  const handleCreateProduct = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleOpenNewProductModal = () => {
+    const targetCatId = categories[0]?.id || 1;
+    setNewCategoryId(targetCatId);
+    setNewCode(generateSKU(targetCatId));
+    setNewName('');
+    setNewUnit('UND');
+    setNewCost(0);
+    setNewPrice(0);
+    setNewMinStock(5);
+    setWithInitialStock(false);
+    setInitialStockQty(10);
+    if (warehouses.length > 0) setInitialStockWhId(warehouses[0].id);
+    setProductSuccessToast(null);
+    setIsProductModalOpen(true);
+    setTimeout(() => {
+      nameInputRef.current?.focus();
+    }, 100);
+  };
+
+  const handleCloneProduct = (p: Product) => {
+    const catId = p.category_id || categories[0]?.id || 1;
+    setNewCategoryId(catId);
+    setNewUnit(p.unit);
+    setNewCost(p.purchase_price);
+    setNewPrice(p.sale_price);
+    setNewMinStock(p.min_stock);
+    setNewName(`${p.name} (Copia)`);
+    setNewCode(generateSKU(catId));
+    setWithInitialStock(false);
+    setInitialStockQty(10);
+    if (warehouses.length > 0) setInitialStockWhId(warehouses[0].id);
+    setProductSuccessToast(null);
+    setIsProductModalOpen(true);
+    setTimeout(() => {
+      nameInputRef.current?.focus();
+      nameInputRef.current?.select();
+    }, 100);
+  };
+
+  const handleCreateProduct = async (e?: React.FormEvent, keepOpen = false) => {
+    if (e) e.preventDefault();
+    if (!newName.trim()) {
+      alert('Por favor ingresa el nombre comercial del producto');
+      return;
+    }
+    const codeToSave = newCode.trim() || generateSKU(newCategoryId);
     try {
-      await api.createProduct({
-        code: newCode,
-        name: newName,
+      setIsSavingProduct(true);
+      const newProd = await api.createProduct({
+        code: codeToSave.toUpperCase(),
+        name: newName.trim(),
         category_id: newCategoryId,
-        unit: newUnit,
-        purchase_price: newCost,
-        sale_price: newPrice,
-        min_stock: newMinStock
+        unit: newUnit || 'UND',
+        purchase_price: Number(newCost) || 0,
+        sale_price: Number(newPrice) || 0,
+        min_stock: Number(newMinStock) || 5
       });
-      setIsProductModalOpen(false);
-      setNewCode('');
-      setNewName('');
-      loadAll();
+
+      if (withInitialStock && initialStockQty > 0 && initialStockWhId) {
+        await api.adjustStock({
+          product_id: newProd.id,
+          warehouse_id: initialStockWhId,
+          movement_type: 'ENTRADA',
+          quantity: initialStockQty,
+          notes: `Stock Inicial de apertura — ${newProd.name}`
+        });
+      }
+
+      await loadAll();
+
+      if (keepOpen) {
+        setProductSuccessToast(`¡"${newName}" registrado con éxito! Formulario listo para el siguiente.`);
+        setTimeout(() => setProductSuccessToast(null), 3500);
+        setNewName('');
+        setNewCode(generateSKU(newCategoryId));
+        setTimeout(() => {
+          nameInputRef.current?.focus();
+        }, 50);
+      } else {
+        setIsProductModalOpen(false);
+        setNewCode('');
+        setNewName('');
+        setWithInitialStock(false);
+        setProductSuccessToast(null);
+      }
     } catch (err: any) {
       alert(err.message || 'Error al registrar producto');
+    } finally {
+      setIsSavingProduct(false);
+    }
+  };
+
+  const handleQuickInlineAdd = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!quickAddName.trim()) {
+      alert('Por favor ingresa el nombre del producto');
+      return;
+    }
+    const sku = quickAddCode.trim() || generateSKU(quickAddCatId);
+    try {
+      setIsQuickAdding(true);
+      const newProd = await api.createProduct({
+        code: sku.toUpperCase(),
+        name: quickAddName.trim(),
+        category_id: quickAddCatId,
+        unit: quickAddUnit || 'UND',
+        purchase_price: Number(quickAddCost) || 0,
+        sale_price: Number(quickAddPrice) || 0,
+        min_stock: 5
+      });
+
+      if (Number(quickAddStock) > 0 && quickAddWhId) {
+        await api.adjustStock({
+          product_id: newProd.id,
+          warehouse_id: quickAddWhId,
+          movement_type: 'ENTRADA',
+          quantity: Number(quickAddStock),
+          notes: `Stock Inicial — ${newProd.name}`
+        });
+      }
+
+      await loadAll();
+
+      // Reset for next rapid input
+      setQuickAddName('');
+      setQuickAddCost(0);
+      setQuickAddPrice(0);
+      setQuickAddStock(0);
+      setQuickAddCode(generateSKU(quickAddCatId));
+      if (quickNameInputRef.current) {
+        quickNameInputRef.current.focus();
+      }
+    } catch (err: any) {
+      alert(err.message || 'Error al agregar producto');
+    } finally {
+      setIsQuickAdding(false);
     }
   };
 
@@ -295,8 +474,25 @@ export const InventoryModule: React.FC = () => {
             <span>{importLoading ? 'Importando...' : 'Importar CSV'}</span>
           </button>
           <button
-            onClick={() => setIsProductModalOpen(true)}
-            className="flex-1 sm:flex-none justify-center flex items-center gap-2 px-4 py-2.5 bg-sky-600 hover:bg-sky-700 text-white font-semibold rounded-xl text-xs shadow-md shadow-sky-600/20 transition-colors"
+            onClick={() => {
+              setIsQuickBarVisible(!isQuickBarVisible);
+              if (!isQuickBarVisible && !quickAddCode) {
+                setQuickAddCode(generateSKU(quickAddCatId));
+              }
+            }}
+            className={`flex-1 sm:flex-none justify-center flex items-center gap-1.5 px-3.5 py-2.5 font-semibold rounded-xl text-xs border transition-all cursor-pointer ${
+              isQuickBarVisible
+                ? 'bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-300 dark:border-amber-700 shadow-xs'
+                : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700'
+            }`}
+            title="Alternar barra de alta rápida en línea para carga ágil de productos"
+          >
+            <Zap className={`w-4 h-4 ${isQuickBarVisible ? 'text-amber-500 fill-amber-500' : 'text-amber-500'}`} />
+            <span>{isQuickBarVisible ? 'Alta Rápida Activada' : '⚡ Alta Rápida'}</span>
+          </button>
+          <button
+            onClick={handleOpenNewProductModal}
+            className="flex-1 sm:flex-none justify-center flex items-center gap-2 px-4 py-2.5 bg-sky-600 hover:bg-sky-700 text-white font-semibold rounded-xl text-xs shadow-md shadow-sky-600/20 transition-colors cursor-pointer"
           >
             <Plus className="w-4 h-4" />
             <span>Nuevo Producto</span>
@@ -362,6 +558,158 @@ export const InventoryModule: React.FC = () => {
       {/* Subtab 1: Products */}
       {activeSubTab === 'products' && (
         <div className="space-y-4">
+          {/* Barra de Carga Rápida en Línea (Instantánea) */}
+          {isQuickBarVisible && (
+            <form
+              onSubmit={handleQuickInlineAdd}
+              className="p-4 bg-gradient-to-r from-sky-50/90 via-white to-sky-50/70 dark:from-slate-900 dark:via-slate-800/80 dark:to-slate-900 rounded-2xl border-2 border-sky-300 dark:border-sky-700/80 shadow-md shadow-sky-600/5 space-y-3 transition-all"
+            >
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <span className="flex h-2.5 w-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                  <span className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                    <Zap className="w-4 h-4 text-amber-500 fill-amber-500" />
+                    Alta Rápida de Producto (Modo Ráfaga)
+                  </span>
+                  <span className="text-[11px] text-slate-500 dark:text-slate-400 hidden sm:inline">
+                    — Ingresa los datos y presiona <kbd className="px-1.5 py-0.5 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded text-[10px] font-mono">Enter</kbd> para guardarlo al instante.
+                  </span>
+                </div>
+                <div className="flex items-center gap-3">
+                  {quickAddPrice > 0 && (
+                    <span className="text-[11px] font-mono text-emerald-700 dark:text-emerald-400 font-semibold bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded-md border border-emerald-200 dark:border-emerald-800">
+                      Margen: S/. {(quickAddPrice - quickAddCost).toFixed(2)} ({quickAddCost > 0 ? (((quickAddPrice - quickAddCost) / quickAddCost) * 100).toFixed(0) : 100}%)
+                    </span>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setIsQuickBarVisible(false)}
+                    className="text-[11px] text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
+                  >
+                    Ocultar
+                  </button>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-12 gap-2.5 items-end">
+                {/* SKU */}
+                <div className="md:col-span-2">
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-[10px] font-bold text-slate-600 dark:text-slate-400">SKU / Código</label>
+                    <button
+                      type="button"
+                      onClick={() => setQuickAddCode(generateSKU(quickAddCatId))}
+                      className="text-[10px] text-sky-600 dark:text-sky-400 font-semibold hover:underline flex items-center gap-0.5"
+                      title="Generar nuevo SKU correlativo"
+                    >
+                      <Sparkles className="w-3 h-3" /> Auto
+                    </button>
+                  </div>
+                  <input
+                    type="text"
+                    value={quickAddCode || generateSKU(quickAddCatId)}
+                    onChange={(e) => setQuickAddCode(e.target.value)}
+                    placeholder="SKU"
+                    className="w-full p-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-mono font-bold uppercase text-slate-900 dark:text-slate-100"
+                  />
+                </div>
+
+                {/* Nombre */}
+                <div className="col-span-2 sm:col-span-2 md:col-span-4">
+                  <label className="block text-[10px] font-bold text-slate-600 dark:text-slate-400 mb-1">Nombre Comercial *</label>
+                  <input
+                    ref={quickNameInputRef}
+                    type="text"
+                    required
+                    placeholder="ej: Mouse Óptico Logitech G203"
+                    value={quickAddName}
+                    onChange={(e) => setQuickAddName(e.target.value)}
+                    className="w-full p-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-slate-900 dark:text-slate-100"
+                  />
+                </div>
+
+                {/* Categoría */}
+                <div className="md:col-span-2">
+                  <label className="block text-[10px] font-bold text-slate-600 dark:text-slate-400 mb-1">Categoría</label>
+                  <select
+                    value={quickAddCatId}
+                    onChange={(e) => {
+                      const newCat = Number(e.target.value);
+                      setQuickAddCatId(newCat);
+                      setQuickAddCode(generateSKU(newCat));
+                    }}
+                    className="w-full p-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-slate-100"
+                  >
+                    {categories.map(c => (
+                      <option key={c.id} value={c.id}>{c.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Costo */}
+                <div className="md:col-span-1">
+                  <label className="block text-[10px] font-bold text-slate-600 dark:text-slate-400 mb-1">Costo S/.</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    placeholder="0.00"
+                    value={quickAddCost || ''}
+                    onChange={(e) => setQuickAddCost(Number(e.target.value))}
+                    className="w-full p-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-mono text-right"
+                  />
+                </div>
+
+                {/* Precio */}
+                <div className="md:col-span-1">
+                  <label className="block text-[10px] font-bold text-slate-600 dark:text-slate-400 mb-1">Precio S/.</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    placeholder="0.00"
+                    value={quickAddPrice || ''}
+                    onChange={(e) => setQuickAddPrice(Number(e.target.value))}
+                    className="w-full p-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-mono font-bold text-sky-700 dark:text-sky-400 text-right"
+                  />
+                </div>
+
+                {/* Stock Inicial */}
+                <div className="md:col-span-1">
+                  <label className="block text-[10px] font-bold text-slate-600 dark:text-slate-400 mb-1">Stock Inic.</label>
+                  <input
+                    type="number"
+                    min="0"
+                    placeholder="0"
+                    value={quickAddStock || ''}
+                    onChange={(e) => setQuickAddStock(Math.max(0, Number(e.target.value)))}
+                    className="w-full p-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-mono font-bold text-center"
+                    title="Stock inicial de apertura (en el almacén principal)"
+                  />
+                </div>
+
+                {/* Botón Agregar */}
+                <div className="md:col-span-1">
+                  <button
+                    type="submit"
+                    disabled={isQuickAdding || !quickAddName.trim()}
+                    className="w-full p-2 bg-sky-600 hover:bg-sky-700 disabled:opacity-50 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-sky-600/20 flex items-center justify-center gap-1 cursor-pointer"
+                    title="Registrar producto al instante"
+                  >
+                    {isQuickAdding ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <>
+                        <Plus className="w-4 h-4" />
+                        <span>Alta</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            </form>
+          )}
+
           {/* Search & Category Filter */}
           <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs flex flex-col md:flex-row items-center justify-between gap-4 transition-colors">
             <div className="relative flex-1 w-full max-w-md">
@@ -405,12 +753,11 @@ export const InventoryModule: React.FC = () => {
                     <th className="py-3.5 px-4 text-center">Stock Mín.</th>
                     <th className="py-3.5 px-4 text-center">Stock Global</th>
                     <th className="py-3.5 px-4 text-center">Estado</th>
-                    <th className="py-3.5 px-4 text-center">Acción</th>
+                    <th className="py-3.5 px-4 text-center">Acciones</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                   {filteredProducts.map((p) => {
-                    const isLow = (p.total_stock || 0) <= p.min_stock;
                     return (
                       <tr key={p.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition-colors">
                         <td className="py-3 px-4 font-mono font-medium text-slate-900 dark:text-slate-100">{p.code}</td>
@@ -431,20 +778,30 @@ export const InventoryModule: React.FC = () => {
                           <StockStatusBadge stock={p.total_stock || 0} />
                         </td>
                         <td className="py-3 px-4 text-center">
-                          <button
-                            onClick={() => {
-                              setQuickProduct({ id: p.id, name: p.name, code: p.code });
-                              setQuickQty(10);
-                              setQuickNotes('');
-                              setQuickSuccess(false);
-                              if (warehouses.length > 0) setQuickWhId(warehouses[0].id);
-                            }}
-                            className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:hover:bg-emerald-950/70 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 rounded-lg text-[10px] font-bold transition-colors cursor-pointer"
-                            title="Ingresar stock rápido"
-                          >
-                            <PlusCircle className="w-3 h-3" />
-                            Stock
-                          </button>
+                          <div className="flex items-center justify-center gap-1.5">
+                            <button
+                              onClick={() => handleCloneProduct(p)}
+                              className="inline-flex items-center gap-1 px-2.5 py-1 bg-sky-50 hover:bg-sky-100 dark:bg-sky-950/40 dark:hover:bg-sky-950/70 text-sky-700 dark:text-sky-300 border border-sky-200 dark:border-sky-800 rounded-lg text-[10px] font-bold transition-colors cursor-pointer"
+                              title="Duplicar producto (pre-rellena datos con nuevo SKU sugerido)"
+                            >
+                              <Copy className="w-3 h-3" />
+                              Duplicar
+                            </button>
+                            <button
+                              onClick={() => {
+                                setQuickProduct({ id: p.id, name: p.name, code: p.code });
+                                setQuickQty(10);
+                                setQuickNotes('');
+                                setQuickSuccess(false);
+                                if (warehouses.length > 0) setQuickWhId(warehouses[0].id);
+                              }}
+                              className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:hover:bg-emerald-950/70 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 rounded-lg text-[10px] font-bold transition-colors cursor-pointer"
+                              title="Ingresar stock rápido"
+                            >
+                              <PlusCircle className="w-3 h-3" />
+                              + Stock
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     );
@@ -688,26 +1045,53 @@ export const InventoryModule: React.FC = () => {
       <Modal
         isOpen={isProductModalOpen}
         onClose={() => setIsProductModalOpen(false)}
-        title="Crear Nuevo Producto en Catálogo"
+        title="Registrar Producto en Catálogo"
+        maxWidth="max-w-xl"
       >
-        <form onSubmit={handleCreateProduct} className="space-y-3">
-          <div className="grid grid-cols-2 gap-3">
+        <form onSubmit={(e) => handleCreateProduct(e, false)} className="space-y-3.5">
+          {/* Toast de éxito para carga continua */}
+          {productSuccessToast && (
+            <div className="p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-200 text-xs font-semibold flex items-center gap-2 animate-in fade-in slide-in-from-top-1">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+              <span>{productSuccessToast}</span>
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Código SKU</label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">Código SKU *</label>
+                <button
+                  type="button"
+                  onClick={() => setNewCode(generateSKU(newCategoryId))}
+                  className="text-[10px] font-bold text-sky-600 dark:text-sky-400 hover:text-sky-700 flex items-center gap-1 hover:underline cursor-pointer"
+                  title="Generar código correlativo único para esta categoría"
+                >
+                  <Sparkles className="w-3 h-3 text-amber-500" />
+                  Auto-generar SKU
+                </button>
+              </div>
               <input
                 type="text"
                 required
-                placeholder="ej: PROD-SRV-01"
+                placeholder="ej: LAP-001"
                 value={newCode}
                 onChange={(e) => setNewCode(e.target.value)}
-                className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-slate-100 font-mono"
+                className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-slate-100 font-mono font-bold uppercase tracking-wider"
               />
             </div>
             <div>
               <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Categoría</label>
               <select
                 value={newCategoryId}
-                onChange={(e) => setNewCategoryId(Number(e.target.value))}
+                onChange={(e) => {
+                  const catId = Number(e.target.value);
+                  setNewCategoryId(catId);
+                  // Si el SKU está vacío o parecía autogenerado, actualizarlo
+                  if (!newCode || newCode.includes('-')) {
+                    setNewCode(generateSKU(catId));
+                  }
+                }}
                 className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-slate-100"
               >
                 {categories.map(c => (
@@ -718,14 +1102,15 @@ export const InventoryModule: React.FC = () => {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Nombre Comercial</label>
+            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Nombre Comercial del Producto *</label>
             <input
+              ref={nameInputRef}
               type="text"
               required
-              placeholder="ej: Servidor Blade Dual Intel Xeon"
+              placeholder="ej: Monitor LG UltraWide 29 Pulgadas IPS FHD"
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
-              className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-slate-100"
+              className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-slate-100 font-medium"
             />
           </div>
 
@@ -736,55 +1121,130 @@ export const InventoryModule: React.FC = () => {
                 type="text"
                 value={newUnit}
                 onChange={(e) => setNewUnit(e.target.value)}
+                placeholder="UND, KG, MT"
                 className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-slate-100"
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Costo Compra (S/.)</label>
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Costo Compra S/.</label>
               <input
                 type="number"
                 step="0.01"
-                value={newCost}
+                min="0"
+                value={newCost || ''}
                 onChange={(e) => setNewCost(Number(e.target.value))}
+                placeholder="0.00"
                 className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-slate-100 font-mono"
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Precio Venta (S/.)</label>
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Precio Venta S/.</label>
               <input
                 type="number"
                 step="0.01"
-                value={newPrice}
+                min="0"
+                value={newPrice || ''}
                 onChange={(e) => setNewPrice(Number(e.target.value))}
-                className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-slate-100 font-mono"
+                placeholder="0.00"
+                className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-slate-100 font-mono font-bold text-sky-700 dark:text-sky-400"
               />
             </div>
           </div>
 
+          {/* Margen proyectado en tiempo real */}
+          {newPrice > 0 && (
+            <div className="flex items-center justify-between px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-xs">
+              <span className="text-slate-500 dark:text-slate-400">Margen comercial proyectado:</span>
+              <span className={`font-mono font-bold flex items-center gap-1.5 ${
+                newPrice >= newCost ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'
+              }`}>
+                <TrendingUp className="w-3.5 h-3.5" />
+                Ganancia: S/. {(newPrice - newCost).toFixed(2)} ({newCost > 0 ? (((newPrice - newCost) / newCost) * 100).toFixed(1) : '100'}%)
+              </span>
+            </div>
+          )}
+
           <div>
-            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Umbral Stock Mínimo</label>
+            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Alerta de Stock Mínimo</label>
             <input
               type="number"
+              min="0"
               value={newMinStock}
               onChange={(e) => setNewMinStock(Number(e.target.value))}
               className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-slate-100"
             />
           </div>
 
-          <div className="flex justify-end gap-2 pt-2">
+          {/* Stock Inicial Opcional (2 en 1) */}
+          <div className="p-3.5 rounded-xl border border-sky-100 dark:border-sky-900/50 bg-sky-50/50 dark:bg-sky-950/20 space-y-2.5">
+            <label className="flex items-center gap-2 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={withInitialStock}
+                onChange={(e) => setWithInitialStock(e.target.checked)}
+                className="w-4 h-4 rounded text-sky-600 focus:ring-sky-500 border-slate-300 dark:border-slate-600 cursor-pointer"
+              />
+              <span className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                📦 Asignar Stock Inicial de apertura ahora (Ahorra un paso)
+              </span>
+            </label>
+            {withInitialStock && (
+              <div className="grid grid-cols-2 gap-3 pt-1 animate-in fade-in">
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400 mb-1">Almacén Destino</label>
+                  <select
+                    value={initialStockWhId}
+                    onChange={(e) => setInitialStockWhId(Number(e.target.value))}
+                    className="w-full p-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs"
+                  >
+                    {warehouses.map(w => (
+                      <option key={w.id} value={w.id}>{w.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400 mb-1">Cantidad Inicial ({newUnit})</label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={initialStockQty}
+                    onChange={(e) => setInitialStockQty(Math.max(1, Number(e.target.value)))}
+                    className="w-full p-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-mono font-bold"
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="flex flex-col-reverse sm:flex-row items-center justify-between gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
             <button
               type="button"
               onClick={() => setIsProductModalOpen(false)}
-              className="px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800"
+              className="w-full sm:w-auto px-4 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer"
             >
               Cancelar
             </button>
-            <button
-              type="submit"
-              className="px-5 py-2.5 bg-sky-600 hover:bg-sky-700 text-white rounded-xl text-xs font-semibold shadow-md shadow-sky-600/20"
-            >
-              Guardar en Catálogo
-            </button>
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              <button
+                type="button"
+                disabled={isSavingProduct}
+                onClick={(e) => handleCreateProduct(e, true)}
+                className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white rounded-xl text-xs font-bold shadow-md shadow-emerald-600/20 transition-all cursor-pointer"
+                title="Guarda este producto y mantiene el formulario listo para el siguiente inmediatamente"
+              >
+                {isSavingProduct ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
+                <span>Guardar y Crear Siguiente</span>
+              </button>
+              <button
+                type="button"
+                disabled={isSavingProduct}
+                onClick={(e) => handleCreateProduct(e, false)}
+                className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-5 py-2.5 bg-sky-600 hover:bg-sky-700 disabled:opacity-60 text-white rounded-xl text-xs font-bold shadow-md shadow-sky-600/20 transition-all cursor-pointer"
+              >
+                {isSavingProduct ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
+                <span>Guardar y Cerrar</span>
+              </button>
+            </div>
           </div>
         </form>
       </Modal>
