@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: erp-zambrano-backend
+    runtime: python
+    rootDir: 03_BACKEND
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DATABASE_URL
+        value: sqlite:///./erp_enterprisecloud.db
+      - key: USE_S3_STORAGE
+        value: false
+    healthCheckPath: /
+    autoDeploy: true

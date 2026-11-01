@@ -316,20 +316,7 @@ export const PurchasesModule: React.FC = () => {
             <Upload className="w-4 h-4 text-sky-600" />
             <span>{importLoading ? 'Leyendo...' : 'Importar CSV'}</span>
           </button>
-          {/* Botón Factura con IA */}
-          <button
-            onClick={() => {
-              setPurchaseMode('normal');
-              setOcrResult(null);
-              setOcrError(null);
-              setIsCreateOpen(true);
-            }}
-            className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-violet-600 via-indigo-600 to-sky-600 hover:from-violet-500 hover:to-sky-500 text-white font-semibold rounded-xl text-xs shadow-md shadow-indigo-600/30 transition-all cursor-pointer transform hover:-translate-y-0.5"
-            title="Escanear y autocompletar desde factura PDF o imagen con IA"
-          >
-            <Sparkles className="w-4 h-4 text-amber-300 animate-pulse" />
-            <span>Factura con IA</span>
-          </button>
+
           {/* Botón Compra por Menor Stock */}
           <button
             onClick={handleOpenLowStockMode}
