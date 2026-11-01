@@ -25,6 +25,11 @@ class Settings(BaseSettings):
     # Directorio de subida local cuando no se usa S3 en modo offline
     UPLOAD_DIR: str = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "uploads")
     
+    # Configuración de Inteligencia Artificial (Copiloto y OCR de Facturas)
+    GEMINI_API_KEY: Optional[str] = os.getenv("GEMINI_API_KEY", os.getenv("GOOGLE_API_KEY", None))
+    OPENAI_API_KEY: Optional[str] = os.getenv("OPENAI_API_KEY", None)
+    AI_MODEL: str = os.getenv("AI_MODEL", "gemini-1.5-flash")
+    
     class Config:
         case_sensitive = True
         env_file = ".env"

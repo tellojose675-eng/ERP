@@ -1,5 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { Plus, Eye, Ban, Search, Download, Trash2, AlertTriangle, X, Upload, PackageOpen, ShoppingBag, Filter } from 'lucide-react';
+import {
+  Plus, Eye, Ban, Search, Download, Trash2, AlertTriangle, X,
+  Upload, PackageOpen, ShoppingBag, Filter, Sparkles, FileText,
+  CheckCircle2, Loader2, Bot
+} from 'lucide-react';
 import { api } from '../../services/api';
 import { Purchase, Supplier, Product, Warehouse } from '../../types';
 import { Modal } from '../../components/Modal';
@@ -27,6 +31,12 @@ export const PurchasesModule: React.FC = () => {
   const [productSearch, setProductSearch] = useState('');
   const [importLoading, setImportLoading] = useState(false);
   const [importResult, setImportResult] = useState<string | null>(null);
+
+  // Estado OCR / Extracción con IA
+  const [ocrLoading, setOcrLoading] = useState(false);
+  const [ocrResult, setOcrResult] = useState<any | null>(null);
+  const [ocrError, setOcrError] = useState<string | null>(null);
+
 
   // Form
   const [supplierId, setSupplierId] = useState<number>(0);
@@ -243,6 +253,42 @@ export const PurchasesModule: React.FC = () => {
     return matchesSearch && matchesStatus;
   });
 
+  const handleInvoiceFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setOcrLoading(true);
+    setOcrError(null);
+    setOcrResult(null);
+
+    try {
+      const res = await api.extractInvoiceAI(file);
+      setOcrResult(res);
+
+      if (res.supplier?.id) {
+        setSupplierId(res.supplier.id);
+      }
+
+      if (res.invoice_number) {
+        setNotes(`Factura: ${res.invoice_number} (Fecha: ${res.invoice_date || 'S/F'}) - Extraída con IA`);
+      }
+
+      if (res.items && res.items.length > 0) {
+        const loadedItems = res.items.map((it: any) => ({
+          product_id: it.product_id || (products.length > 0 ? products[0].id : 0),
+          quantity: it.quantity > 0 ? it.quantity : 1,
+          unit_price: it.unit_price > 0 ? it.unit_price : 0
+        }));
+        setItems(loadedItems);
+      }
+    } catch (err: any) {
+      setOcrError(err.message || 'Error al procesar la factura con IA');
+    } finally {
+      setOcrLoading(false);
+      e.target.value = '';
+    }
+  };
+
   const totals = calculateTotals();
   const lowStockCount = products.filter(p => (p.total_stock ?? 0) <= (p.min_stock ?? 0) && p.min_stock > 0).length;
 
@@ -270,6 +316,20 @@ export const PurchasesModule: React.FC = () => {
             <Upload className="w-4 h-4 text-sky-600" />
             <span>{importLoading ? 'Leyendo...' : 'Importar CSV'}</span>
           </button>
+          {/* Botón Factura con IA */}
+          <button
+            onClick={() => {
+              setPurchaseMode('normal');
+              setOcrResult(null);
+              setOcrError(null);
+              setIsCreateOpen(true);
+            }}
+            className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-violet-600 via-indigo-600 to-sky-600 hover:from-violet-500 hover:to-sky-500 text-white font-semibold rounded-xl text-xs shadow-md shadow-indigo-600/30 transition-all cursor-pointer transform hover:-translate-y-0.5"
+            title="Escanear y autocompletar desde factura PDF o imagen con IA"
+          >
+            <Sparkles className="w-4 h-4 text-amber-300 animate-pulse" />
+            <span>Factura con IA</span>
+          </button>
           {/* Botón Compra por Menor Stock */}
           <button
             onClick={handleOpenLowStockMode}
@@ -290,6 +350,8 @@ export const PurchasesModule: React.FC = () => {
               setPurchaseMode('normal');
               setItems([{ product_id: 0, quantity: 1, unit_price: 0 }]);
               setProductSearch('');
+              setOcrResult(null);
+              setOcrError(null);
               setIsCreateOpen(true);
             }}
             className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl text-xs shadow-md shadow-indigo-600/30 transition-all cursor-pointer"
@@ -299,6 +361,7 @@ export const PurchasesModule: React.FC = () => {
           </button>
         </div>
       </div>
+
 
       {/* Resultado importación */}
       {importResult && (
@@ -430,6 +493,86 @@ export const PurchasesModule: React.FC = () => {
         maxWidth="max-w-4xl"
       >
         <form onSubmit={handleCreatePurchase} className="space-y-4">
+          {/* Tarjeta de Extracción Inteligente con IA (OCR) */}
+          <div className="p-3.5 rounded-2xl bg-gradient-to-r from-violet-500/10 via-indigo-500/10 to-sky-500/10 border border-indigo-200 dark:border-indigo-800/80 shadow-xs transition-all">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-start gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-violet-600 to-indigo-600 flex items-center justify-center text-white shrink-0 shadow-xs">
+                  <Sparkles className="w-4 h-4 text-amber-300 animate-pulse" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                    Autocompletar con IA desde Factura de Proveedor
+                    <span className="text-[10px] bg-indigo-100 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 px-2 py-0.5 rounded-full font-semibold">
+                      PDF o Foto
+                    </span>
+                  </h4>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                    Sube la factura (Deltron, Tech Data, etc.). La IA extraerá proveedor, RUC, fecha, productos y precios.
+                  </p>
+                </div>
+              </div>
+
+              <label className="inline-flex items-center justify-center gap-2 px-3.5 py-2 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white text-xs font-semibold shadow-xs transition-colors cursor-pointer shrink-0">
+                {ocrLoading ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    <span>Analizando con IA...</span>
+                  </>
+                ) : (
+                  <>
+                    <FileText className="w-3.5 h-3.5" />
+                    <span>Subir Factura</span>
+                  </>
+                )}
+                <input
+                  type="file"
+                  accept=".pdf,image/png,image/jpeg,image/jpg,image/webp"
+                  onChange={handleInvoiceFileUpload}
+                  disabled={ocrLoading}
+                  className="hidden"
+                />
+              </label>
+            </div>
+
+            {/* Mensaje de éxito de extracción */}
+            {ocrResult && (
+              <div className="mt-2.5 p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-800 text-xs text-emerald-800 dark:text-emerald-300 flex items-center justify-between gap-2 animate-in fade-in">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span>
+                    <b>Factura {ocrResult.invoice_number || 'procesada'}</b>: Se autocompletaron {ocrResult.items_count} producto(s) en la orden.
+                    {ocrResult.supplier?.is_matched && ` Proveedor reconocido: ${ocrResult.supplier.name}.`}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setOcrResult(null)}
+                  className="text-emerald-700 dark:text-emerald-400 hover:underline text-[11px] cursor-pointer"
+                >
+                  Ocultar
+                </button>
+              </div>
+            )}
+
+            {/* Mensaje de error si falla */}
+            {ocrError && (
+              <div className="mt-2.5 p-2.5 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-300 dark:border-rose-800 text-xs text-rose-800 dark:text-rose-300 flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
+                  <span>{ocrError}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setOcrError(null)}
+                  className="text-rose-700 dark:text-rose-400 hover:underline text-[11px] cursor-pointer"
+                >
+                  Cerrar
+                </button>
+              </div>
+            )}
+          </div>
+
           {/* Banner de modo bajo stock */}
           {purchaseMode === 'low_stock' && (
             <div className="p-3.5 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 text-amber-800 dark:text-amber-200 text-xs font-semibold flex items-center gap-2">
@@ -440,6 +583,7 @@ export const PurchasesModule: React.FC = () => {
               </span>
             </div>
           )}
+
           {/* Buscador de productos (solo modo normal) */}
           {purchaseMode === 'normal' && (
             <div className="relative">

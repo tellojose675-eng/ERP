@@ -365,3 +365,14 @@ class DashboardKPIs(BaseModel):
     recent_sales: List[dict]
     low_stock_products: List[dict]
     sales_by_month: List[dict]
+
+# ================= INTELIGENCIA ARTIFICIAL =================
+class AIChatRequest(BaseModel):
+    message: str
+    history: Optional[List[dict]] = None
+
+class AIChatResponse(BaseModel):
+    reply: str
+    suggested_actions: List[str] = []
+    source: str = "analyst_engine"
+

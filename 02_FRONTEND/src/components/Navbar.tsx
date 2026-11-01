@@ -1,5 +1,5 @@
 import React from 'react';
-import { Monitor, ShieldCheck, LogOut, User as UserIcon, Sun, Moon, Menu, X } from 'lucide-react';
+import { Monitor, ShieldCheck, LogOut, User as UserIcon, Sun, Moon, Menu, X, Sparkles } from 'lucide-react';
 import { ThemeMode } from '../utils/theme';
 
 interface NavbarProps {
@@ -9,6 +9,7 @@ interface NavbarProps {
   onToggleTheme: () => void;
   isMobileMenuOpen?: boolean;
   onToggleMobileMenu?: () => void;
+  onOpenCopilot?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -17,8 +18,10 @@ export const Navbar: React.FC<NavbarProps> = ({
   theme,
   onToggleTheme,
   isMobileMenuOpen = false,
-  onToggleMobileMenu
+  onToggleMobileMenu,
+  onOpenCopilot
 }) => {
+
   return (
     <header className="h-16 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-3 sm:px-6 flex items-center justify-between sticky top-0 z-30 shadow-xs transition-colors duration-200">
       {/* Brand & Mobile Hamburger */}
@@ -78,6 +81,19 @@ export const Navbar: React.FC<NavbarProps> = ({
             </>
           )}
         </button>
+
+        {/* Botón Copiloto IA */}
+        {onOpenCopilot && (
+          <button
+            type="button"
+            onClick={onOpenCopilot}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-2xl bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white text-xs font-bold shadow-md shadow-indigo-500/20 hover:shadow-indigo-500/30 transition-all cursor-pointer transform hover:-translate-y-0.5"
+            title="Abrir Copiloto IA"
+          >
+            <Sparkles className="w-3.5 h-3.5 animate-pulse text-amber-300" />
+            <span className="hidden sm:inline">Copiloto IA</span>
+          </button>
+        )}
 
         {/* AWS Online Status */}
         <div className="hidden lg:flex items-center gap-2 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400 px-3 py-1.5 rounded-full text-xs font-medium">

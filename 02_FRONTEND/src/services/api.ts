@@ -200,4 +200,22 @@ export const api = {
     return res;
   },
   getRoles: () => request<any[]>('/users/roles'),
+
+  // Inteligencia Artificial (Copiloto y OCR de Facturas)
+  getAIStatus: () => request<any>('/ai/status'),
+  getBusinessInsights: () => request<any>('/ai/business-insights'),
+  chatCopilot: (message: string, history?: any[]) =>
+    request<any>('/ai/chat', {
+      method: 'POST',
+      body: JSON.stringify({ message, history }),
+    }),
+  extractInvoiceAI: async (file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return request<any>('/ai/extract-invoice', {
+      method: 'POST',
+      body: formData,
+    });
+  },
 };
+

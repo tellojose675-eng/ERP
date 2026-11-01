@@ -404,3 +404,60 @@ class TestDashboard:
         assert "total_projected_profit" in data
         assert "details" in data
         assert isinstance(data["details"], list)
+
+
+# ============================================================
+# TEST SUITE: Inteligencia Artificial (Copiloto y OCR Facturas)
+# ============================================================
+class TestArtificialIntelligence:
+    def test_ai_status(self, client):
+        """Verifica que el endpoint de estado de IA responda correctamente."""
+        response = client.get("/api/v1/ai/status")
+        assert response.status_code == 200
+        data = response.json()
+        assert "active_provider" in data
+        assert "capabilities" in data
+        assert len(data["capabilities"]) > 0
+
+    def test_ai_business_insights_authenticated(self, client):
+        """Verifica obtención de contexto e insights de negocio con usuario autenticado."""
+        token = get_admin_token(client)
+        response = client.get("/api/v1/ai/business-insights", headers={"Authorization": f"Bearer {token}"})
+        assert response.status_code == 200
+        data = response.json()
+        assert "sales" in data
+        assert "inventory" in data
+        assert "finances" in data
+
+    def test_ai_copilot_chat(self, client):
+        """Verifica que el Copiloto responda a consultas en lenguaje natural."""
+        token = get_admin_token(client)
+        payload = {"message": "¿Cuáles son los productos con stock crítico?"}
+        response = client.post("/api/v1/ai/chat", json=payload, headers={"Authorization": f"Bearer {token}"})
+        assert response.status_code == 200
+        data = response.json()
+        assert "reply" in data
+        assert len(data["reply"]) > 10
+        assert "suggested_actions" in data
+        assert "source" in data
+
+    def test_ai_extract_invoice(self, client):
+        """Verifica que la extracción de factura procese archivos y concilie datos con la BD."""
+        token = get_admin_token(client)
+        # Enviar archivo de texto simulando factura
+        sample_invoice = b"FACTURA ELECTRONICA F001-000452\nRUC: 20100458923\nTech Data Mayorista\nFECHA: 2026-10-25\nTOTAL: 2891.00"
+        files = {
+            "file": ("factura_test.pdf", sample_invoice, "application/pdf")
+        }
+        response = client.post(
+            "/api/v1/ai/extract-invoice",
+            files=files,
+            headers={"Authorization": f"Bearer {token}"}
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success"] is True
+        assert "supplier" in data
+        assert "invoice_number" in data
+        assert "items" in data
+

@@ -45,6 +45,7 @@
 | ☁️ **Documentos S3** | RF-06 | Upload/download, S3 + fallback local, metadatos |
 | 🔍 **Auditoría** | RF-07 | Log inmutable de operaciones, filtros por módulo |
 | 📊 **Dashboard** | RF-08 | KPIs en tiempo real, gráfico de tendencias, alertas stock |
+| 🤖 **Inteligencia Artificial** | RF-09 | Copiloto IA de Negocio (NLQ), OCR de Facturas (PDF/Imágenes), conciliación automática con Catálogo |
 
 ---
 
@@ -95,7 +96,8 @@ cd 03_BACKEND
 .\venv\Scripts\python.exe -m pytest ..\06_TESTING\test_api.py -v
 ```
 
-**Resultado esperado:** `33 passed` cubriendo los 8 módulos funcionales.
+**Resultado esperado:** `37 passed` cubriendo los 9 módulos funcionales y de Inteligencia Artificial.
+
 
 ---
 
