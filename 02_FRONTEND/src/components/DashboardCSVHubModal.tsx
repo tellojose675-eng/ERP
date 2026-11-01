@@ -10,7 +10,7 @@ import { parseCSVContent, readFileAsText, openCSVFileDialog } from '../utils/imp
 import { formatPeruDateTime } from '../utils/dateUtils';
 
 export type CSVModalMode = 'import' | 'export';
-export type ImportTargetType = 'AUTO' | 'PRODUCTS' | 'CUSTOMERS' | 'SUPPLIERS';
+export type ImportTargetType = 'AUTO' | 'COMBINED' | 'PRODUCTS' | 'CUSTOMERS' | 'SUPPLIERS';
 
 interface DashboardCSVHubModalProps {
   isOpen: boolean;
@@ -42,8 +42,12 @@ export const DashboardCSVHubModal: React.FC<DashboardCSVHubModalProps> = ({
   if (!isOpen) return null;
 
   // ── Auto-Detection Logic ───────────────────────────────────────────────────
-  const detectCSVType = (headers: string[]): 'PRODUCTS' | 'CUSTOMERS' | 'SUPPLIERS' => {
+  const detectCSVType = (headers: string[]): 'COMBINED' | 'PRODUCTS' | 'CUSTOMERS' | 'SUPPLIERS' => {
     const joined = headers.map(h => h.toLowerCase()).join(' ');
+    // Combined file tiene columna "tipo"
+    if (joined.includes('tipo') && (joined.includes('sku') || joined.includes('razonsocial') || joined.includes('numerodocumento'))) {
+      return 'COMBINED';
+    }
     if (joined.includes('sku') || joined.includes('producto') || joined.includes('costo') || joined.includes('precioventa') || joined.includes('stockminimo')) {
       return 'PRODUCTS';
     }
@@ -90,7 +94,116 @@ export const DashboardCSVHubModal: React.FC<DashboardCSVHubModalProps> = ({
   };
 
   // ── Template Downloads ─────────────────────────────────────────────────────
-  const downloadTemplate = (type: 'PRODUCTS' | 'CUSTOMERS' | 'SUPPLIERS') => {
+  const downloadTemplate = (type: 'COMBINED' | 'PRODUCTS' | 'CUSTOMERS' | 'SUPPLIERS') => {
+    if (type === 'COMBINED') {
+      const data = [
+        // ── PRODUCTOS ──
+        {
+          Tipo: 'PRODUCTO',
+          SKU: 'LAP-ASUS-001', NombreProducto: 'Laptop Asus VivoBook 15',
+          Categoria: 'Laptops & Computadoras', Unidad: 'UND',
+          CostoUnitario: '1900', PrecioVenta: '2699', StockMinimo: '3', StockInicial: '8',
+          TipoDocumento: '', NumeroDocumento: '', RazonSocial: '',
+          Email: '', Telefono: '', Direccion: '', LimiteCredito: '', Contacto: ''
+        },
+        {
+          Tipo: 'PRODUCTO',
+          SKU: 'IPH-16-PRO', NombreProducto: 'iPhone 16 Pro 256GB Black',
+          Categoria: 'Smartphones & Celulares', Unidad: 'UND',
+          CostoUnitario: '3600', PrecioVenta: '4899', StockMinimo: '5', StockInicial: '12',
+          TipoDocumento: '', NumeroDocumento: '', RazonSocial: '',
+          Email: '', Telefono: '', Direccion: '', LimiteCredito: '', Contacto: ''
+        },
+        {
+          Tipo: 'PRODUCTO',
+          SKU: 'MON-DELL-27', NombreProducto: 'Monitor Dell 27 4K IPS',
+          Categoria: 'Monitores & Pantallas', Unidad: 'UND',
+          CostoUnitario: '1100', PrecioVenta: '1599', StockMinimo: '2', StockInicial: '6',
+          TipoDocumento: '', NumeroDocumento: '', RazonSocial: '',
+          Email: '', Telefono: '', Direccion: '', LimiteCredito: '', Contacto: ''
+        },
+        {
+          Tipo: 'PRODUCTO',
+          SKU: 'TEC-LOG-MX', NombreProducto: 'Teclado Logitech MX Keys',
+          Categoria: 'Perifericos', Unidad: 'UND',
+          CostoUnitario: '380', PrecioVenta: '549', StockMinimo: '5', StockInicial: '20',
+          TipoDocumento: '', NumeroDocumento: '', RazonSocial: '',
+          Email: '', Telefono: '', Direccion: '', LimiteCredito: '', Contacto: ''
+        },
+        {
+          Tipo: 'PRODUCTO',
+          SKU: 'AUR-SONY-WH', NombreProducto: 'Audifonos Sony WH-1000XM5',
+          Categoria: 'Audio & Sonido', Unidad: 'UND',
+          CostoUnitario: '850', PrecioVenta: '1299', StockMinimo: '3', StockInicial: '10',
+          TipoDocumento: '', NumeroDocumento: '', RazonSocial: '',
+          Email: '', Telefono: '', Direccion: '', LimiteCredito: '', Contacto: ''
+        },
+        // ── CLIENTES ──
+        {
+          Tipo: 'CLIENTE',
+          SKU: '', NombreProducto: '', Categoria: '', Unidad: '',
+          CostoUnitario: '', PrecioVenta: '', StockMinimo: '', StockInicial: '',
+          TipoDocumento: 'RUC', NumeroDocumento: '20555666771',
+          RazonSocial: 'Soluciones Tecnologicas SAC',
+          Email: 'facturacion@soluciones.pe', Telefono: '01-4455667',
+          Direccion: 'Av. Las Begonias 450, San Isidro, Lima',
+          LimiteCredito: '45000', Contacto: ''
+        },
+        {
+          Tipo: 'CLIENTE',
+          SKU: '', NombreProducto: '', Categoria: '', Unidad: '',
+          CostoUnitario: '', PrecioVenta: '', StockMinimo: '', StockInicial: '',
+          TipoDocumento: 'DNI', NumeroDocumento: '47895612',
+          RazonSocial: 'Mariana Flores Rojas',
+          Email: 'mariana.flores@gmail.com', Telefono: '988776655',
+          Direccion: 'Calle Los Cedros 123, Miraflores, Lima',
+          LimiteCredito: '12000', Contacto: ''
+        },
+        {
+          Tipo: 'CLIENTE',
+          SKU: '', NombreProducto: '', Categoria: '', Unidad: '',
+          CostoUnitario: '', PrecioVenta: '', StockMinimo: '', StockInicial: '',
+          TipoDocumento: 'RUC', NumeroDocumento: '20612345678',
+          RazonSocial: 'Corporacion Digital Peru SAC',
+          Email: 'compras@corpdigital.pe', Telefono: '01-3456789',
+          Direccion: 'Jr. Carabaya 456, Cercado de Lima',
+          LimiteCredito: '80000', Contacto: ''
+        },
+        // ── PROVEEDORES ──
+        {
+          Tipo: 'PROVEEDOR',
+          SKU: '', NombreProducto: '', Categoria: '', Unidad: '',
+          CostoUnitario: '', PrecioVenta: '', StockMinimo: '', StockInicial: '',
+          TipoDocumento: 'RUC', NumeroDocumento: '20199887711',
+          RazonSocial: 'Distribuidora Global Tech SRL',
+          Email: 'ventas@globaltech.pe', Telefono: '01-3344556',
+          Direccion: 'Av. Industrial 890, Cercado de Lima',
+          LimiteCredito: '180000', Contacto: 'Juan Perez Gomez'
+        },
+        {
+          Tipo: 'PROVEEDOR',
+          SKU: '', NombreProducto: '', Categoria: '', Unidad: '',
+          CostoUnitario: '', PrecioVenta: '', StockMinimo: '', StockInicial: '',
+          TipoDocumento: 'RUC', NumeroDocumento: '20443322119',
+          RazonSocial: 'Importaciones Andinas SAC',
+          Email: 'pedidos@andinasimport.pe', Telefono: '01-2233445',
+          Direccion: 'Jr. Comercio 560, Callao',
+          LimiteCredito: '150000', Contacto: 'Laura Sanchez'
+        },
+        {
+          Tipo: 'PROVEEDOR',
+          SKU: '', NombreProducto: '', Categoria: '', Unidad: '',
+          CostoUnitario: '', PrecioVenta: '', StockMinimo: '', StockInicial: '',
+          TipoDocumento: 'RUC', NumeroDocumento: '20387654321',
+          RazonSocial: 'TechSupply Peru EIRL',
+          Email: 'contacto@techsupply.pe', Telefono: '01-5678901',
+          Direccion: 'Av. Venezuela 1200, Breña, Lima',
+          LimiteCredito: '90000', Contacto: 'Roberto Mendoza'
+        }
+      ];
+      exportToCSV(data, 'plantilla_completa_todos_modulos_erp');
+      return;
+    }
     if (type === 'PRODUCTS') {
       const data = [
         {
@@ -185,6 +298,110 @@ export const DashboardCSVHubModal: React.FC<DashboardCSVHubModalProps> = ({
     let successCount = 0;
     let errorCount = 0;
     const errorsList: string[] = [];
+
+    // ── Lógica COMBINED: separa filas por columna "Tipo" y procesa cada grupo ──
+    if (targetType === 'COMBINED') {
+      try {
+        const productRows = parsedRows.filter(r => (r['Tipo'] || '').toUpperCase() === 'PRODUCTO');
+        const customerRows = parsedRows.filter(r => (r['Tipo'] || '').toUpperCase() === 'CLIENTE');
+        const supplierRows = parsedRows.filter(r => (r['Tipo'] || '').toUpperCase() === 'PROVEEDOR');
+        const total = parsedRows.length;
+        let processed = 0;
+
+        // --- Importar Productos ---
+        if (productRows.length > 0) {
+          setProgressStatus('Cargando categorías y almacenes...');
+          const [existingCats, warehouses] = await Promise.all([
+            api.getCategories().catch(() => []),
+            api.getWarehouses().catch(() => [])
+          ]);
+          const defaultWhId = warehouses.length > 0 ? warehouses[0].id : 1;
+
+          for (const row of productRows) {
+            const code = row['SKU'] || row['sku'] || '';
+            const name = row['NombreProducto'] || row['Producto'] || row['nombre'] || '';
+            if (!code || !name) { errorCount++; errorsList.push(`PRODUCTO sin SKU o nombre (${JSON.stringify(row).slice(0, 60)})`); processed++; continue; }
+            const catName = row['Categoria'] || row['categoria'] || 'General';
+            let cat = existingCats.find((c: any) => c.name.toLowerCase() === catName.toLowerCase());
+            if (!cat) {
+              try { cat = await api.createCategory({ name: catName, description: 'Categoría importada desde CSV' }); existingCats.push(cat); }
+              catch { cat = existingCats[0] || { id: 1 }; }
+            }
+            try {
+              const created = await api.createProduct({
+                code, name, category_id: cat?.id || 1,
+                unit: row['Unidad'] || 'UND',
+                purchase_price: parseFloat(row['CostoUnitario'] || '0') || 0,
+                sale_price: parseFloat(row['PrecioVenta'] || '0') || 0,
+                min_stock: parseFloat(row['StockMinimo'] || '5') || 5
+              });
+              const initialStock = parseFloat(row['StockInicial'] || '0') || 0;
+              if (initialStock > 0 && created?.id) {
+                await api.adjustStock({ product_id: created.id, warehouse_id: defaultWhId, movement_type: 'ENTRADA', quantity: initialStock, notes: `Stock inicial CSV combinado - SKU: ${code}` }).catch(() => {});
+              }
+              successCount++;
+            } catch (e: any) { errorCount++; errorsList.push(`PRODUCTO ${code}: ${e.message || 'Error'}`); }
+            processed++;
+            setProcessingProgress(Math.round((processed / total) * 100));
+            setProgressStatus(`Productos: ${code}`);
+          }
+        }
+
+        // --- Importar Clientes ---
+        for (const row of customerRows) {
+          const docNumber = row['NumeroDocumento'] || row['documento'] || '';
+          const name = row['RazonSocial'] || row['Nombre'] || '';
+          if (!docNumber || !name) { errorCount++; errorsList.push(`CLIENTE sin documento o nombre`); processed++; continue; }
+          const docType = (row['TipoDocumento'] || (docNumber.length === 11 ? 'RUC' : 'DNI')).toUpperCase();
+          try {
+            await api.createCustomer({
+              document_type: docType, document_number: docNumber, name,
+              email: row['Email'] || '', phone: row['Telefono'] || '',
+              address: row['Direccion'] || '',
+              credit_limit: parseFloat(row['LimiteCredito'] || '10000') || 10000
+            });
+            successCount++;
+          } catch (e: any) { errorCount++; errorsList.push(`CLIENTE ${docNumber}: ${e.message || 'Error'}`); }
+          processed++;
+          setProcessingProgress(Math.round((processed / total) * 100));
+          setProgressStatus(`Clientes: ${name}`);
+        }
+
+        // --- Importar Proveedores ---
+        for (const row of supplierRows) {
+          const docNumber = row['NumeroDocumento'] || row['documento'] || '';
+          const name = row['RazonSocial'] || row['Nombre'] || '';
+          if (!docNumber || !name) { errorCount++; errorsList.push(`PROVEEDOR sin documento o nombre`); processed++; continue; }
+          try {
+            await api.createSupplier({
+              document_type: (row['TipoDocumento'] || 'RUC').toUpperCase(),
+              document_number: docNumber, name,
+              contact_name: row['Contacto'] || '',
+              email: row['Email'] || '', phone: row['Telefono'] || '',
+              address: row['Direccion'] || '',
+              credit_limit: parseFloat(row['LimiteCredito'] || '50000') || 50000
+            });
+            successCount++;
+          } catch (e: any) { errorCount++; errorsList.push(`PROVEEDOR ${docNumber}: ${e.message || 'Error'}`); }
+          processed++;
+          setProcessingProgress(Math.round((processed / total) * 100));
+          setProgressStatus(`Proveedores: ${name}`);
+        }
+
+        notifyDataChanged();
+        if (onDataImported) onDataImported();
+        setResultMessage({
+          type: successCount > 0 ? 'success' : 'error',
+          text: `CSV Combinado: ${successCount} registros importados (${productRows.length} productos, ${customerRows.length} clientes, ${supplierRows.length} proveedores).${errorCount > 0 ? ` ${errorCount} omitidos.` : ''}`,
+          details: errorsList.slice(0, 5)
+        });
+      } catch (globalErr: any) {
+        setResultMessage({ type: 'error', text: `Error en importación combinada: ${globalErr.message || 'Fallo general'}` });
+      } finally {
+        setIsProcessing(false);
+      }
+      return;
+    }
 
     try {
       if (targetType === 'PRODUCTS') {
@@ -559,7 +776,27 @@ export const DashboardCSVHubModal: React.FC<DashboardCSVHubModalProps> = ({
                 <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-2">
                   1. Selecciona el Tipo de Datos a Cargar:
                 </label>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+
+                  {/* COMBINED */}
+                  <button
+                    type="button"
+                    onClick={() => setImportTarget('COMBINED')}
+                    className={`p-3 rounded-2xl border text-left flex flex-col justify-between transition-all cursor-pointer col-span-2 sm:col-span-1 ${
+                      importTarget === 'COMBINED'
+                        ? 'border-purple-500 bg-purple-50/60 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 shadow-xs'
+                        : 'border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/60 text-slate-700 dark:text-slate-300'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <Database className="w-4 h-4 text-purple-500" />
+                      {importTarget === 'COMBINED' && <Check className="w-3.5 h-3.5 text-purple-600" />}
+                    </div>
+                    <div className="mt-2">
+                      <div className="text-xs font-bold">Todo en Uno</div>
+                      <div className="text-[10px] text-slate-400">CSV Combinado</div>
+                    </div>
+                  </button>
                   <button
                     type="button"
                     onClick={() => setImportTarget('AUTO')}
@@ -639,29 +876,35 @@ export const DashboardCSVHubModal: React.FC<DashboardCSVHubModalProps> = ({
               </div>
 
               {/* Plantillas de Ejemplo */}
-              <div className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/70 dark:border-slate-800">
+              <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/70 dark:border-slate-800 space-y-2">
                 <div className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-300">
                   <Database className="w-4 h-4 text-sky-500 shrink-0" />
-                  <span>¿Necesitas una plantilla de ejemplo para Excel / CSV?</span>
+                  <span className="font-semibold">¿Necesitas una plantilla de ejemplo para Excel / CSV?</span>
                 </div>
                 <div className="flex items-center gap-1.5 flex-wrap">
+                  <button
+                    onClick={() => downloadTemplate('COMBINED')}
+                    className="px-2.5 py-1 text-[11px] font-bold bg-purple-600 text-white border border-purple-600 rounded-lg hover:bg-purple-500 transition-colors shadow-sm"
+                  >
+                    ⭐ Plantilla Completa (Todo en Uno)
+                  </button>
                   <button
                     onClick={() => downloadTemplate('PRODUCTS')}
                     className="px-2.5 py-1 text-[11px] font-semibold bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg hover:text-sky-600 dark:hover:text-sky-400 transition-colors shadow-2xs"
                   >
-                    Plantilla Productos
+                    Solo Productos
                   </button>
                   <button
                     onClick={() => downloadTemplate('CUSTOMERS')}
                     className="px-2.5 py-1 text-[11px] font-semibold bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors shadow-2xs"
                   >
-                    Plantilla Clientes
+                    Solo Clientes
                   </button>
                   <button
                     onClick={() => downloadTemplate('SUPPLIERS')}
                     className="px-2.5 py-1 text-[11px] font-semibold bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg hover:text-amber-600 dark:hover:text-amber-400 transition-colors shadow-2xs"
                   >
-                    Plantilla Proveedores
+                    Solo Proveedores
                   </button>
                 </div>
               </div>
