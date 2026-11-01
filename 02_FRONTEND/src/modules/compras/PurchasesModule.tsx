@@ -5,7 +5,6 @@ import { Purchase, Supplier, Product, Warehouse } from '../../types';
 import { Modal } from '../../components/Modal';
 import { exportToCSV } from '../../utils/exportToCSV';
 import { importCSVFlow } from '../../utils/importFromCSV';
-import { StockStatusBadge, StockQuantityPill } from '../../components/StockStatusBadge';
 import { formatPeruDate, formatPeruDateTime } from '../../utils/dateUtils';
 
 type PurchaseMode = 'normal' | 'low_stock';
@@ -37,7 +36,6 @@ export const PurchasesModule: React.FC = () => {
   const [items, setItems] = useState<{ product_id: number; quantity: number; unit_price: number }[]>([
     { product_id: 0, quantity: 1, unit_price: 0 }
   ]);
-  const [stockWarning, setStockWarning] = useState<string | null>(null);
 
   const [warehouseStock, setWarehouseStock] = useState<any[]>([]);
 
@@ -88,41 +86,19 @@ export const PurchasesModule: React.FC = () => {
     };
   }, [warehouseId]);
 
-  // Límite de compra por unidad: respeta min_stock o cupo de 5 unidades
-  const getProductLimit = (pId: number): number => {
-    if (!pId) return 5;
-    const prod = products.find(p => p.id === pId);
-    return prod?.min_stock ? Math.max(5, Math.round(prod.min_stock)) : 5;
-  };
-
   const handleProductSelect = (index: number, pId: number) => {
     const prod = products.find(p => p.id === pId);
     const newItems = [...items];
     newItems[index].product_id = pId;
     if (prod) {
       newItems[index].unit_price = prod.purchase_price;
-      const limit = getProductLimit(pId);
-      if (newItems[index].quantity > limit) {
-        newItems[index].quantity = limit;
-      }
     }
     setItems(newItems);
-    setStockWarning(null);
   };
 
   const incrementQty = (index: number) => {
     const item = items[index];
-    if (!item.product_id) {
-      setStockWarning("Por favor selecciona primero un producto.");
-      return;
-    }
-    const limit = getProductLimit(item.product_id);
-    if (item.quantity >= limit) {
-      setStockWarning(`⚠️ Ya no hay más producto en stock, está agotado (Límite máximo por orden: ${limit} unidades).`);
-      setTimeout(() => setStockWarning(null), 4000);
-      return;
-    }
-    setStockWarning(null);
+    if (!item.product_id) return;
     const newItems = [...items];
     newItems[index].quantity += 1;
     setItems(newItems);
@@ -133,36 +109,24 @@ export const PurchasesModule: React.FC = () => {
     if (newItems[index].quantity > 1) {
       newItems[index].quantity -= 1;
       setItems(newItems);
-      setStockWarning(null);
     }
   };
 
   const handleQtyChange = (index: number, val: number) => {
     const item = items[index];
     if (!item.product_id) return;
-    const limit = getProductLimit(item.product_id);
-    let finalVal = val;
-    if (val > limit) {
-      setStockWarning(`⚠️ Ya no hay más producto en stock, está agotado (Límite máximo: ${limit} unidades).`);
-      setTimeout(() => setStockWarning(null), 4000);
-      finalVal = limit;
-    } else {
-      setStockWarning(null);
-    }
     const newItems = [...items];
-    newItems[index].quantity = Math.max(1, finalVal);
+    newItems[index].quantity = Math.max(1, isNaN(val) ? 1 : val);
     setItems(newItems);
   };
 
   const addItemRow = () => {
     setItems([...items, { product_id: 0, quantity: 1, unit_price: 0 }]);
-    setStockWarning(null);
   };
 
   const removeItemRow = (index: number) => {
     if (items.length > 1) {
       setItems(items.filter((_, i) => i !== index));
-      setStockWarning(null);
     }
   };
 
@@ -262,7 +226,6 @@ export const PurchasesModule: React.FC = () => {
     }));
     setItems(preloaded);
     setPurchaseMode('low_stock');
-    setStockWarning(null);
     setIsCreateOpen(true);
   };
 
@@ -325,7 +288,6 @@ export const PurchasesModule: React.FC = () => {
           <button
             onClick={() => {
               setPurchaseMode('normal');
-              setStockWarning(null);
               setItems([{ product_id: 0, quantity: 1, unit_price: 0 }]);
               setProductSearch('');
               setIsCreateOpen(true);
@@ -478,18 +440,6 @@ export const PurchasesModule: React.FC = () => {
               </span>
             </div>
           )}
-          {/* Alerta de Stock / Límite */}
-          {stockWarning && (
-            <div className="p-3.5 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 text-amber-800 dark:text-amber-200 text-xs font-semibold flex items-center justify-between animate-in fade-in">
-              <div className="flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
-                <span>{stockWarning}</span>
-              </div>
-              <button type="button" onClick={() => setStockWarning(null)} className="text-amber-700 hover:text-amber-900 p-1">
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-          )}
           {/* Buscador de productos (solo modo normal) */}
           {purchaseMode === 'normal' && (
             <div className="relative">
@@ -579,87 +529,56 @@ export const PurchasesModule: React.FC = () => {
             </div>
 
             <div className="space-y-2.5">
-              {items.map((item, idx) => {
-                const limit = getProductLimit(item.product_id);
-                const isMax = item.product_id > 0 && item.quantity >= limit;
+              {items.map((item, idx) => (
+                <div key={idx} className="p-3 bg-white dark:bg-slate-800/90 rounded-2xl border border-slate-200/80 dark:border-slate-700 flex flex-col md:flex-row md:items-center gap-3">
+                  {/* Selector de Producto */}
+                  <div className="flex-1">
+                    <label className="text-[10px] uppercase font-bold text-slate-400 mb-0.5 block">Producto #{idx + 1}</label>
+                    <select
+                      required
+                      value={item.product_id}
+                      onChange={(e) => handleProductSelect(idx, Number(e.target.value))}
+                      className="w-full p-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-slate-100 font-medium"
+                    >
+                      <option value={0}>-- Seleccionar Producto del Catálogo --</option>
+                      {(purchaseMode === 'normal' ? filteredProductsForModal : products).map(p => (
+                        <option key={p.id} value={p.id}>
+                          {p.code} - {p.name} (Costo Ref: S/. {Number(p.purchase_price).toFixed(2)})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
 
-                return (
-                  <div key={idx} className="p-3 bg-white dark:bg-slate-800/90 rounded-2xl border border-slate-200/80 dark:border-slate-700 flex flex-col md:flex-row md:items-center gap-3">
-                    {/* Selector de Producto */}
-                    <div className="flex-1">
-                      <label className="text-[10px] uppercase font-bold text-slate-400 mb-0.5 block">Producto #{idx + 1}</label>
-                      <select
-                        required
-                        value={item.product_id}
-                        onChange={(e) => handleProductSelect(idx, Number(e.target.value))}
-                        className="w-full p-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-slate-100 font-medium"
+                  {/* Stepper Cantidad [-] [Qty] [+] */}
+                  <div className="w-full md:w-36">
+                    <label className="text-[10px] uppercase font-bold text-slate-400 mb-0.5 block">Cantidad</label>
+                    <div className="flex items-center border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden bg-slate-50 dark:bg-slate-900">
+                      <button
+                        type="button"
+                        onClick={() => decrementQty(idx)}
+                        disabled={item.quantity <= 1}
+                        className="px-3 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs disabled:opacity-40 cursor-pointer"
+                        title="Restar 1 unidad"
                       >
-                        <option value={0}>-- Seleccionar Producto del Catálogo --</option>
-                        {(purchaseMode === 'normal' ? filteredProductsForModal : products).map(p => (
-                          <option key={p.id} value={p.id}>
-                            {p.code} - {p.name} [Stock Actual: {p.total_stock ?? 0} {p.unit || 'UND'}] (Costo: S/. {Number(p.purchase_price).toFixed(2)})
-                          </option>
-                        ))}
-                      </select>
-                      {item.product_id > 0 && (
-                        <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                          {(() => {
-                            const prod = products.find(p => p.id === item.product_id);
-                            const currentStock = prod?.total_stock ?? 0;
-                            return (
-                              <>
-                                <StockQuantityPill stock={currentStock} unit={prod?.unit || 'UND'} />
-                                <StockStatusBadge stock={currentStock} size="sm" />
-                                <span className="text-[10px] text-slate-500 dark:text-slate-400">
-                                  Límite por compra: <b className="text-slate-700 dark:text-slate-200">{limit} UND</b>
-                                </span>
-                              </>
-                            );
-                          })()}
-                          {isMax && (
-                            <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400">
-                              (Límite alcanzado)
-                            </span>
-                          )}
-                        </div>
-                      )}
+                        -
+                      </button>
+                      <input
+                        type="number"
+                        min="1"
+                        value={item.quantity}
+                        onChange={(e) => handleQtyChange(idx, Number(e.target.value))}
+                        className="w-full text-center text-xs font-bold text-slate-800 dark:text-slate-100 bg-transparent focus:outline-none"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => incrementQty(idx)}
+                        className="px-3 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs cursor-pointer transition-colors"
+                        title="Añadir 1 unidad"
+                      >
+                        +
+                      </button>
                     </div>
-
-                    {/* Stepper Cantidad [-] [Qty] [+] */}
-                    <div className="w-full md:w-36">
-                      <label className="text-[10px] uppercase font-bold text-slate-400 mb-0.5 block">Cantidad</label>
-                      <div className="flex items-center border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden bg-slate-50 dark:bg-slate-900">
-                        <button
-                          type="button"
-                          onClick={() => decrementQty(idx)}
-                          disabled={item.quantity <= 1}
-                          className="px-3 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs disabled:opacity-40 cursor-pointer"
-                          title="Restar 1 unidad"
-                        >
-                          -
-                        </button>
-                        <input
-                          type="number"
-                          min="1"
-                          max={limit}
-                          value={item.quantity}
-                          onChange={(e) => handleQtyChange(idx, Number(e.target.value))}
-                          className="w-full text-center text-xs font-bold text-slate-800 dark:text-slate-100 bg-transparent focus:outline-none"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => incrementQty(idx)}
-                          className={`px-3 py-2 font-bold text-xs cursor-pointer transition-colors ${
-                            isMax
-                              ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300'
-                              : 'bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200'
-                          }`}
-                          title={isMax ? 'Límite máximo alcanzado' : 'Añadir 1 unidad'}
-                        >
-                          +
-                        </button>
-                      </div>
-                    </div>
+                  </div>
 
                     {/* Costo Unitario */}
                     <div className="w-full md:w-32">
@@ -698,8 +617,7 @@ export const PurchasesModule: React.FC = () => {
                       </button>
                     </div>
                   </div>
-                );
-              })}
+                ))}
             </div>
 
             {/* Resumen Totales de la Orden */}
