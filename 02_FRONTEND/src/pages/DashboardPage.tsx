@@ -152,7 +152,7 @@ export const DashboardPage: React.FC = () => {
       await api.resetAllData();
       await fetchMetrics();
       setIsResetModalOpen(false);
-      showToast('Se vaciaron todas las transacciones, compras, ventas, kardex y saldos con éxito.', 'success');
+      showToast('Se vació absolutamente TODO con éxito: Clientes, Proveedores, Inventario, Productos, Ventas y Compras.', 'success');
     } catch (err: any) {
       alert('Error al vaciar los datos: ' + (err.message || err));
     } finally {
@@ -666,14 +666,14 @@ export const DashboardPage: React.FC = () => {
               </div>
             </div>
             <div className="p-4 rounded-2xl bg-rose-50/50 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-900/40 text-xs leading-relaxed mb-6 space-y-2">
-              <p className="text-rose-900 dark:text-rose-200">Al confirmar, el sistema ejecutará un vaciado integral:</p>
+              <p className="text-rose-900 dark:text-rose-200">Al confirmar, el sistema ejecutará un vaciado integral absoluto:</p>
               <ul className="list-disc list-inside space-y-1 text-[11px] text-slate-600 dark:text-slate-300">
-                <li>Se eliminarán todas las <b>Ventas y Comprobantes</b>.</li>
+                <li>Se eliminarán todos los <b>Clientes y Proveedores</b> registrados.</li>
+                <li>Se eliminarán todos los <b>Productos y Categorías</b>.</li>
+                <li>Se vaciará por completo el <b>Inventario y Kardex</b>.</li>
+                <li>Se eliminarán todas las <b>Ventas, Comprobantes y Boletas</b>.</li>
                 <li>Se eliminarán todas las <b>Compras y Órdenes</b>.</li>
-                <li>Se eliminarán todos los <b>Cobros y Pagos</b>.</li>
-                <li>Se limpiará el <b>Kardex de Movimientos</b>.</li>
-                <li>Saldos de clientes y proveedores → <b>S/. 0.00</b>.</li>
-                <li>Stock de inventarios → <b>0 unidades</b>.</li>
+                <li>Se eliminarán todos los <b>Cobros, Pagos y Documentos</b> adjuntos.</li>
               </ul>
             </div>
             <div className="flex items-center justify-end gap-3">

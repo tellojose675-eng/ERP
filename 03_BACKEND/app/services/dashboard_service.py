@@ -1,8 +1,8 @@
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from app.models.models import (
-    Sale, Purchase, Customer, Supplier, Product, Inventory, SaleDetail, 
-    PurchaseDetail, Payment, InventoryMovement
+    Sale, Purchase, Customer, Supplier, Product, Category, Inventory, SaleDetail,
+    PurchaseDetail, Payment, InventoryMovement, Document, AuditLog
 )
 from app.services.audit_service import log_activity
 
@@ -94,10 +94,17 @@ def get_dashboard_metrics(db: Session) -> dict:
 
 def reset_all_operations(db: Session, user_id: int = 1, username: str = "admin") -> dict:
     """
-    Vacía todas las operaciones del sistema (Ventas, Compras, Pagos, Kardex),
-    reinicia saldos de clientes y proveedores a 0.0, y restablece el stock a 0.0.
+    Vacía TODO el sistema:
+    - Pagos y Documentos
+    - Ventas y detalles de venta
+    - Compras y detalles de compra
+    - Movimientos de Kardex e Inventario físico
+    - Catálogo de Productos y Categorías
+    - Directorio de Clientes y Proveedores
+    Mantiene intactos los usuarios, roles y almacenes base para garantizar operatividad.
     """
-    # 1. Eliminar pagos
+    # 1. Eliminar documentos adjuntos y pagos
+    db.query(Document).delete()
     db.query(Payment).delete()
     
     # 2. Eliminar detalles de venta y ventas
@@ -108,21 +115,18 @@ def reset_all_operations(db: Session, user_id: int = 1, username: str = "admin")
     db.query(PurchaseDetail).delete()
     db.query(Purchase).delete()
     
-    # 4. Eliminar movimientos de inventario (Kardex)
+    # 4. Eliminar movimientos de inventario (Kardex) e inventario por almacén
     db.query(InventoryMovement).delete()
+    db.query(Inventory).delete()
     
-    # 5. Resetear saldos de clientes y proveedores a 0.0
-    for customer in db.query(Customer).all():
-        customer.current_balance = 0.0
-        
-    for supplier in db.query(Supplier).all():
-        supplier.current_balance = 0.0
-        
-    # 6. Resetear stock de inventarios a 0.0
-    for inv in db.query(Inventory).all():
-        inv.stock = 0.0
-        inv.reserved_stock = 0.0
-        
+    # 5. Eliminar productos y categorías
+    db.query(Product).delete()
+    db.query(Category).delete()
+    
+    # 6. Eliminar clientes y proveedores
+    db.query(Customer).delete()
+    db.query(Supplier).delete()
+    
     db.commit()
     
     # 7. Registrar en auditoría
@@ -133,10 +137,11 @@ def reset_all_operations(db: Session, user_id: int = 1, username: str = "admin")
         user_id=user_id,
         username=username,
         record_id="ALL",
-        details="Vaciado total del sistema: se eliminaron ventas, compras, pagos, movimientos kardex y se restablecieron saldos y existencias a 0."
+        details="Vaciado total absoluto del sistema: se eliminaron ventas, compras, pagos, kardex, inventario, productos, categorías, clientes y proveedores."
     )
     
     return {
         "status": "success",
-        "message": "Se han vaciado todas las operaciones, ventas, compras, pagos, kardex y saldos con éxito."
+        "message": "Se ha vaciado absolutamente TODO el sistema (Clientes, Proveedores, Productos, Inventario, Ventas, Compras y Pagos) con éxito."
     }
+
