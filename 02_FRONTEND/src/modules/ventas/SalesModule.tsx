@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Plus, Eye, Ban, Search, Download, Printer, Filter, Trash2, AlertTriangle, X } from 'lucide-react';
+import { Plus, Eye, Ban, Search, Download, Printer, Filter, Trash2, AlertTriangle, X, UserPlus, Zap, CheckCircle2, Loader2 } from 'lucide-react';
 import { api } from '../../services/api';
 import { Sale, Customer, Product, Warehouse } from '../../types';
 import { Modal } from '../../components/Modal';
@@ -22,6 +22,14 @@ export const SalesModule: React.FC = () => {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
   const [printingSale, setPrintingSale] = useState<Sale | null>(null);
+
+  // Quick Customer state in sales modal
+  const [isQuickCustomerOpen, setIsQuickCustomerOpen] = useState(false);
+  const [quickDocType, setQuickDocType] = useState<'DNI' | 'RUC'>('DNI');
+  const [quickDocNumber, setQuickDocNumber] = useState('');
+  const [quickCustName, setQuickCustName] = useState('');
+  const [quickCustPhone, setQuickCustPhone] = useState('');
+  const [isSavingQuickCust, setIsSavingQuickCust] = useState(false);
 
   // Form state
   const [customerId, setCustomerId] = useState<number>(0);
@@ -86,6 +94,38 @@ export const SalesModule: React.FC = () => {
     if (!pId) return 0;
     const stk = warehouseStock.find(s => s.product_id === pId);
     return stk ? stk.stock : 0;
+  };
+
+  const handleSaveQuickCustomer = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!quickDocNumber.trim() || !quickCustName.trim()) {
+      alert('Doc. de identidad y nombre son obligatorios');
+      return;
+    }
+    try {
+      setIsSavingQuickCust(true);
+      const created = await api.createCustomer({
+        document_type: quickDocType,
+        document_number: quickDocNumber.trim(),
+        name: quickCustName.trim(),
+        phone: quickCustPhone.trim() || undefined,
+        credit_limit: 0
+      });
+      // Reload customers and auto-select new one
+      const updatedCustomers = await api.getCustomers();
+      setCustomers(updatedCustomers);
+      setCustomerId(created.id);
+      // Close and reset quick customer form
+      setIsQuickCustomerOpen(false);
+      setQuickDocNumber('');
+      setQuickCustName('');
+      setQuickCustPhone('');
+      setQuickDocType('DNI');
+    } catch (err: any) {
+      alert(err.message || 'Error al registrar cliente');
+    } finally {
+      setIsSavingQuickCust(false);
+    }
   };
 
   const productsWithStock = products
@@ -433,7 +473,7 @@ export const SalesModule: React.FC = () => {
       {/* Modal Emitir Venta con soporte Múltiples Productos y Validación Estricta de Stock */}
       <Modal
         isOpen={isCreateOpen}
-        onClose={() => setIsCreateOpen(false)}
+        onClose={() => { setIsCreateOpen(false); setIsQuickCustomerOpen(false); }}
         title="Emitir Comprobante de Venta"
         maxWidth="max-w-4xl"
       >
@@ -453,25 +493,114 @@ export const SalesModule: React.FC = () => {
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Cliente</label>
-              <select
-                required
-                value={customerId}
-                onChange={(e) => setCustomerId(Number(e.target.value))}
-                className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-slate-100"
-              >
-                {customers.map((c) => (
-                  <option key={c.id} value={c.id}>{c.name} ({c.document_number})</option>
-                ))}
-              </select>
-              {(() => {
-                const selCust = customers.find(c => c.id === customerId);
-                return selCust ? (
-                  <span className="text-[10px] text-sky-600 dark:text-sky-400 mt-1 block">
-                    Saldo CxC: S/. {Number(selCust.current_balance || 0).toFixed(2)}
-                  </span>
-                ) : null;
-              })()}
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">Cliente</label>
+                <button
+                  type="button"
+                  onClick={() => setIsQuickCustomerOpen(!isQuickCustomerOpen)}
+                  className={`flex items-center gap-1 text-[10px] font-bold cursor-pointer transition-colors ${
+                    isQuickCustomerOpen
+                      ? 'text-emerald-700 dark:text-emerald-400'
+                      : 'text-sky-600 dark:text-sky-400 hover:text-sky-700'
+                  }`}
+                  title="Registrar nuevo cliente al vuelo sin salir de esta ventana"
+                >
+                  <UserPlus className="w-3 h-3" />
+                  {isQuickCustomerOpen ? 'Cancelar nuevo' : '+ Nuevo Cliente'}
+                </button>
+              </div>
+
+              {/* Quick Customer Inline Panel */}
+              {isQuickCustomerOpen ? (
+                <form
+                  onSubmit={handleSaveQuickCustomer}
+                  className="p-3 rounded-xl border-2 border-emerald-300 dark:border-emerald-700 bg-emerald-50/60 dark:bg-emerald-950/20 space-y-2 animate-in fade-in slide-in-from-top-1"
+                >
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                    <span className="text-[11px] font-bold text-emerald-800 dark:text-emerald-300 flex items-center gap-1">
+                      <Zap className="w-3 h-3 text-amber-500" /> Registrar Cliente Rápido
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-600 dark:text-slate-400 mb-0.5">Tipo Doc.</label>
+                      <select
+                        value={quickDocType}
+                        onChange={e => setQuickDocType(e.target.value as 'DNI' | 'RUC')}
+                        className="w-full p-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs"
+                      >
+                        <option value="DNI">DNI</option>
+                        <option value="RUC">RUC</option>
+                        <option value="CE">CE</option>
+                        <option value="PASAPORTE">Pasaporte</option>
+                      </select>
+                    </div>
+                    <div className="col-span-2">
+                      <label className="block text-[10px] font-bold text-slate-600 dark:text-slate-400 mb-0.5">Número *</label>
+                      <input
+                        type="text"
+                        required
+                        autoFocus
+                        placeholder={quickDocType === 'RUC' ? '20xxxxxxxxx' : '12345678'}
+                        value={quickDocNumber}
+                        onChange={e => setQuickDocNumber(e.target.value)}
+                        className="w-full p-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-mono font-bold"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-600 dark:text-slate-400 mb-0.5">Nombre / Razón Social *</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="ej: Juan Pérez Torres"
+                      value={quickCustName}
+                      onChange={e => setQuickCustName(e.target.value)}
+                      className="w-full p-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-semibold"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-600 dark:text-slate-400 mb-0.5">Teléfono (opcional)</label>
+                    <input
+                      type="text"
+                      placeholder="ej: 987654321"
+                      value={quickCustPhone}
+                      onChange={e => setQuickCustPhone(e.target.value)}
+                      className="w-full p-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs"
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={isSavingQuickCust}
+                    className="w-full flex items-center justify-center gap-1.5 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white rounded-lg text-xs font-bold shadow-sm cursor-pointer transition-all"
+                  >
+                    {isSavingQuickCust ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
+                    {isSavingQuickCust ? 'Guardando...' : 'Guardar y Seleccionar Cliente'}
+                  </button>
+                </form>
+              ) : (
+                <>
+                  <select
+                    required
+                    value={customerId}
+                    onChange={(e) => setCustomerId(Number(e.target.value))}
+                    className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-slate-100"
+                  >
+                    {customers.map((c) => (
+                      <option key={c.id} value={c.id}>{c.name} ({c.document_number})</option>
+                    ))}
+                  </select>
+                  {(() => {
+                    const selCust = customers.find(c => c.id === customerId);
+                    return selCust ? (
+                      <span className="text-[10px] text-sky-600 dark:text-sky-400 mt-1 block">
+                        Saldo CxC: S/. {Number(selCust.current_balance || 0).toFixed(2)}
+                      </span>
+                    ) : null;
+                  })()}
+                </>
+              )}
             </div>
 
             <div>

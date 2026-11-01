@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { Boxes, Plus, ArrowLeftRight, Sliders, History, Search, Download, Filter, CheckCircle2, PlusCircle, Loader2, X, Upload, Zap, Copy, Sparkles, TrendingUp, RefreshCw, Building2, Package, AlertTriangle, DollarSign } from 'lucide-react';
+import { Boxes, Plus, ArrowLeftRight, Sliders, History, Search, Download, Filter, CheckCircle2, PlusCircle, Loader2, X, Upload, Zap, Copy, Sparkles, TrendingUp, RefreshCw, Building2, Package, AlertTriangle, DollarSign, Trash2 } from 'lucide-react';
 import { api } from '../../services/api';
 import { Product, Warehouse, InventoryItem, InventoryMovement, Category } from '../../types';
 import { Modal } from '../../components/Modal';
@@ -302,6 +302,21 @@ export const InventoryModule: React.FC = () => {
       alert(err.message || 'Error al agregar producto');
     } finally {
       setIsQuickAdding(false);
+    }
+  };
+
+  const handleDeleteProduct = async (p: Product) => {
+    const stockTotal = p.total_stock || 0;
+    if (stockTotal > 0) {
+      alert(`No se puede eliminar "${p.name}": tiene ${stockTotal} unidades en stock activo.\nPrimero realiza una salida o transferencia de ese inventario.`);
+      return;
+    }
+    if (!confirm(`¿Eliminar definitivamente "${p.name}" (${p.code}) del catálogo?\nEsta acción no se puede deshacer.`)) return;
+    try {
+      await api.deleteProduct(p.id);
+      await loadAll();
+    } catch (err: any) {
+      alert(err.message || 'Error al eliminar producto');
     }
   };
 
@@ -870,6 +885,14 @@ export const InventoryModule: React.FC = () => {
                             >
                               <PlusCircle className="w-3 h-3" />
                               + Stock
+                            </button>
+                            <button
+                              onClick={() => handleDeleteProduct(p)}
+                              className="inline-flex items-center gap-1 px-2.5 py-1 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:hover:bg-rose-950/70 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-800 rounded-lg text-[10px] font-bold transition-colors cursor-pointer"
+                              title={p.total_stock && p.total_stock > 0 ? `No eliminable: tiene ${p.total_stock} uds en stock` : 'Eliminar producto del catálogo'}
+                            >
+                              <Trash2 className="w-3 h-3" />
+                              Borrar
                             </button>
                           </div>
                         </td>

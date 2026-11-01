@@ -93,3 +93,36 @@ def update_product(
     p_out = ProductOut.model_validate(product)
     p_out.total_stock = sum(inv.stock for inv in product.inventories)
     return p_out
+
+@router.delete("/{product_id}")
+def delete_product(
+    product_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    product = db.query(Product).filter(Product.id == product_id).first()
+    if not product:
+        raise HTTPException(status_code=404, detail="Producto no encontrado")
+    
+    # Check if product has active stock
+    total_stock = sum(inv.stock for inv in product.inventories)
+    if total_stock > 0:
+        raise HTTPException(
+            status_code=400,
+            detail=f"No se puede eliminar '{product.name}': tiene {int(total_stock)} unidades en stock. Primero realice una salida de inventario."
+        )
+    
+    db.delete(product)
+    db.commit()
+    
+    log_activity(
+        db=db,
+        action="ELIMINAR",
+        module="PRODUCTOS",
+        user_id=current_user.id,
+        username=current_user.username,
+        record_id=str(product_id),
+        details=f"Producto eliminado: {product.name} ({product.code})"
+    )
+    
+    return {"ok": True, "message": f"Producto '{product.name}' eliminado correctamente"}

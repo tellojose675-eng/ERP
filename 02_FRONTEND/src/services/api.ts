@@ -104,6 +104,11 @@ export const api = {
     notifyDataChanged();
     return res;
   },
+  deleteProduct: async (id: number) => {
+    const res = await request<any>(`/products/${id}`, { method: 'DELETE' });
+    notifyDataChanged();
+    return res;
+  },
   getCategories: () => request<any[]>('/products/categories'),
   createCategory: async (data: any) => {
     const res = await request<any>('/products/categories', { method: 'POST', body: JSON.stringify(data) });
