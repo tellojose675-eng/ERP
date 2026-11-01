@@ -37,7 +37,7 @@ export const InventoryModule: React.FC = () => {
   const [newMinStock, setNewMinStock] = useState(5);
   // Initial stock in modal
   const [withInitialStock, setWithInitialStock] = useState(false);
-  const [initialStockQty, setInitialStockQty] = useState(10);
+  const [initialStockQty, setInitialStockQty] = useState<number | ''>(10);
   const [initialStockWhId, setInitialStockWhId] = useState<number>(1);
 
   // Quick inline add bar
@@ -67,7 +67,7 @@ export const InventoryModule: React.FC = () => {
 
   // Quick stock modal
   const [quickProduct, setQuickProduct] = useState<{ id: number; name: string; code: string } | null>(null);
-  const [quickQty, setQuickQty] = useState<number>(10);
+  const [quickQty, setQuickQty] = useState<number | ''>(10);
   const [quickWhId, setQuickWhId] = useState<number>(0);
   const [quickNotes, setQuickNotes] = useState<string>('');
   const [quickLoading, setQuickLoading] = useState(false);
@@ -211,12 +211,13 @@ export const InventoryModule: React.FC = () => {
         min_stock: Number(newMinStock) || 5
       });
 
-      if (withInitialStock && initialStockQty > 0 && initialStockWhId) {
+      const initQty = Number(initialStockQty);
+      if (withInitialStock && initQty > 0 && initialStockWhId) {
         await api.adjustStock({
           product_id: newProd.id,
           warehouse_id: initialStockWhId,
           movement_type: 'ENTRADA',
-          quantity: initialStockQty,
+          quantity: initQty,
           notes: `Stock Inicial de apertura — ${newProd.name}`
         });
       }
@@ -293,14 +294,15 @@ export const InventoryModule: React.FC = () => {
   };
 
   const handleQuickStock = async () => {
-    if (!quickProduct || quickQty <= 0 || !quickWhId) return;
+    const qty = Number(quickQty);
+    if (!quickProduct || qty <= 0 || !quickWhId) return;
     setQuickLoading(true);
     try {
       await api.adjustStock({
         product_id: quickProduct.id,
         warehouse_id: quickWhId,
         movement_type: 'ENTRADA',
-        quantity: quickQty,
+        quantity: qty,
         notes: quickNotes || `Ingreso rápido — ${quickProduct.name}`,
       });
       setQuickSuccess(true);
@@ -1207,8 +1209,13 @@ export const InventoryModule: React.FC = () => {
                   <input
                     type="number"
                     min="1"
+                    placeholder="0"
                     value={initialStockQty}
-                    onChange={(e) => setInitialStockQty(Math.max(1, Number(e.target.value)))}
+                    onFocus={(e) => e.target.select()}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setInitialStockQty(val === '' ? '' : Math.max(0, Number(val)));
+                    }}
                     className="w-full p-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-mono font-bold"
                   />
                 </div>
@@ -1294,8 +1301,13 @@ export const InventoryModule: React.FC = () => {
                   <input
                     type="number"
                     min="1"
+                    placeholder="0"
                     value={quickQty}
-                    onChange={e => setQuickQty(Math.max(1, Number(e.target.value)))}
+                    onFocus={(e) => e.target.select()}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setQuickQty(val === '' ? '' : Math.max(0, Number(val)));
+                    }}
                     className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-center focus:outline-none focus:ring-2 focus:ring-emerald-500 font-mono"
                   />
                 </div>
@@ -1320,12 +1332,12 @@ export const InventoryModule: React.FC = () => {
                   </button>
                   <button
                     onClick={handleQuickStock}
-                    disabled={quickLoading || quickQty <= 0}
+                    disabled={quickLoading || !quickQty || Number(quickQty) <= 0}
                     className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white text-xs font-bold shadow-lg shadow-emerald-600/30 cursor-pointer transition-all"
                   >
                     {quickLoading
                       ? <><Loader2 className="w-4 h-4 animate-spin" />Guardando...</>
-                      : <><PlusCircle className="w-4 h-4" />Ingresar {quickQty} UND</>}
+                      : <><PlusCircle className="w-4 h-4" />Ingresar {quickQty || 0} UND</>}
                   </button>
                 </div>
               </div>
