@@ -242,6 +242,7 @@ def create_sale(db: Session, sale_in: SaleCreate, user_id: int, username: str) -
     sale = Sale(
         sale_number=sale_number,
         customer_id=customer.id,
+        customer=customer,
         warehouse_id=sale_in.warehouse_id,
         status=sale_in.status or "FACTURADA",
         subtotal=subtotal,

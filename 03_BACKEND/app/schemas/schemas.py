@@ -231,6 +231,8 @@ class SaleOut(BaseModel):
     sale_number: str
     customer_id: int
     customer_name: Optional[str] = None
+    customer_document: Optional[str] = None
+    customer_address: Optional[str] = None
     warehouse_id: int
     warehouse_name: Optional[str] = None
     sale_date: Union[datetime, str]

@@ -29,13 +29,14 @@ def list_sales(db: Session = Depends(get_db)):
                 "tax": d.tax,
                 "total": d.total
             })
+        cust = s.customer or db.query(Customer).filter(Customer.id == s.customer_id).first()
         results.append({
             "id": s.id,
             "sale_number": s.sale_number,
             "customer_id": s.customer_id,
-            "customer_name": s.customer.name if s.customer else "",
-            "customer_document": f"{s.customer.document_type}: {s.customer.document_number}" if s.customer else "",
-            "customer_address": s.customer.address if s.customer else "",
+            "customer_name": cust.name if cust else "Cliente General",
+            "customer_document": f"{cust.document_type}: {cust.document_number}" if cust and cust.document_number else "",
+            "customer_address": cust.address if cust else "",
             "warehouse_id": s.warehouse_id,
             "warehouse_name": s.warehouse.name if getattr(s, 'warehouse', None) else "Almacén Central Lima",
             "sale_date": get_peru_time(s.sale_date).isoformat() if s.sale_date else get_peru_time().isoformat(),
@@ -77,13 +78,14 @@ def register_sale(
             "total": d.total
         })
         
+    cust = sale.customer or db.query(Customer).filter(Customer.id == sale.customer_id).first()
     return {
         "id": sale.id,
         "sale_number": sale.sale_number,
         "customer_id": sale.customer_id,
-        "customer_name": sale.customer.name if sale.customer else "",
-        "customer_document": f"{sale.customer.document_type}: {sale.customer.document_number}" if sale.customer else "",
-        "customer_address": sale.customer.address if sale.customer else "",
+        "customer_name": cust.name if cust else "Cliente General",
+        "customer_document": f"{cust.document_type}: {cust.document_number}" if cust and cust.document_number else "",
+        "customer_address": cust.address if cust else "",
         "warehouse_id": sale.warehouse_id,
         "warehouse_name": sale.warehouse.name if getattr(sale, 'warehouse', None) else "Almacén Central Lima",
         "sale_date": get_peru_time(sale.sale_date).isoformat() if sale.sale_date else get_peru_time().isoformat(),

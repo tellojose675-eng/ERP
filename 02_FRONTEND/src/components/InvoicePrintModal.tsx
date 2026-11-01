@@ -161,9 +161,9 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({ sale, onCl
             {/* Columna izquierda: cliente */}
             <div>
               <div className="text-slate-400 font-bold uppercase text-[10px] mb-1.5 tracking-wider">Adquiriente / Cliente</div>
-              <div className="font-bold text-slate-900 text-sm leading-tight">{sale.customer_name}</div>
+              <div className="font-bold text-slate-900 text-sm leading-tight">{sale.customer_name || 'Cliente General'}</div>
               <div className="text-slate-500 mt-1 font-mono text-[11px]">
-                {sale.customer_document || 'R.U.C. / D.N.I.: Registrado'}
+                {sale.customer_document || 'DNI / RUC: Registrado'}
               </div>
               <div className="text-slate-500 text-[11px] mt-0.5">
                 Dir: {sale.customer_address || 'Sede Principal, Lima - Perú'}

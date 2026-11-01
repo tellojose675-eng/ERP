@@ -96,8 +96,7 @@ export const SalesModule: React.FC = () => {
     return stk ? stk.stock : 0;
   };
 
-  const handleSaveQuickCustomer = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSaveQuickCustomer = async () => {
     if (!quickDocNumber.trim() || !quickCustName.trim()) {
       alert('Doc. de identidad y nombre son obligatorios');
       return;
@@ -261,8 +260,14 @@ export const SalesModule: React.FC = () => {
       setNotes('');
       loadData();
       if (warehouseId) loadWarehouseStock(warehouseId);
-      window.dispatchEvent(new CustomEvent('erp:data-changed'));
-      setPrintingSale(created);
+      const currentCust = customers.find(c => c.id === customerId);
+      const saleWithCustomer: Sale = {
+        ...created,
+        customer_name: created.customer_name || currentCust?.name || 'Cliente General',
+        customer_document: created.customer_document || (currentCust ? `${currentCust.document_type}: ${currentCust.document_number}` : ''),
+        customer_address: created.customer_address || currentCust?.address || ''
+      };
+      setPrintingSale(saleWithCustomer);
       // Notificación inmediata de guardado en Cloud S3
       const toastId = `sale-${created.id}-${Date.now()}`;
       const { date: tDate, time: tTime } = formatPeruDateAndParts(created.sale_date);
@@ -510,12 +515,9 @@ export const SalesModule: React.FC = () => {
                 </button>
               </div>
 
-              {/* Quick Customer Inline Panel */}
+              {/* Quick Customer Inline Panel — usar div, NO form anidado */}
               {isQuickCustomerOpen ? (
-                <form
-                  onSubmit={handleSaveQuickCustomer}
-                  className="p-3 rounded-xl border-2 border-emerald-300 dark:border-emerald-700 bg-emerald-50/60 dark:bg-emerald-950/20 space-y-2 animate-in fade-in slide-in-from-top-1"
-                >
+                <div className="p-3 rounded-xl border-2 border-emerald-300 dark:border-emerald-700 bg-emerald-50/60 dark:bg-emerald-950/20 space-y-2 animate-in fade-in slide-in-from-top-1">
                   <div className="flex items-center gap-1.5 mb-1">
                     <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
                     <span className="text-[11px] font-bold text-emerald-800 dark:text-emerald-300 flex items-center gap-1">
@@ -540,11 +542,11 @@ export const SalesModule: React.FC = () => {
                       <label className="block text-[10px] font-bold text-slate-600 dark:text-slate-400 mb-0.5">Número *</label>
                       <input
                         type="text"
-                        required
                         autoFocus
                         placeholder={quickDocType === 'RUC' ? '20xxxxxxxxx' : '12345678'}
                         value={quickDocNumber}
                         onChange={e => setQuickDocNumber(e.target.value)}
+                        onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleSaveQuickCustomer(); } }}
                         className="w-full p-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-mono font-bold"
                       />
                     </div>
@@ -553,10 +555,10 @@ export const SalesModule: React.FC = () => {
                     <label className="block text-[10px] font-bold text-slate-600 dark:text-slate-400 mb-0.5">Nombre / Razón Social *</label>
                     <input
                       type="text"
-                      required
                       placeholder="ej: Juan Pérez Torres"
                       value={quickCustName}
                       onChange={e => setQuickCustName(e.target.value)}
+                      onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleSaveQuickCustomer(); } }}
                       className="w-full p-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-semibold"
                     />
                   </div>
@@ -567,18 +569,20 @@ export const SalesModule: React.FC = () => {
                       placeholder="ej: 987654321"
                       value={quickCustPhone}
                       onChange={e => setQuickCustPhone(e.target.value)}
+                      onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleSaveQuickCustomer(); } }}
                       className="w-full p-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs"
                     />
                   </div>
                   <button
-                    type="submit"
+                    type="button"
+                    onClick={handleSaveQuickCustomer}
                     disabled={isSavingQuickCust}
                     className="w-full flex items-center justify-center gap-1.5 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white rounded-lg text-xs font-bold shadow-sm cursor-pointer transition-all"
                   >
                     {isSavingQuickCust ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
                     {isSavingQuickCust ? 'Guardando...' : 'Guardar y Seleccionar Cliente'}
                   </button>
-                </form>
+                </div>
               ) : (
                 <>
                   <select
