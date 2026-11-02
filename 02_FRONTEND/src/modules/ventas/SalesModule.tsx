@@ -36,6 +36,7 @@ export const SalesModule: React.FC = () => {
   const [customerId, setCustomerId] = useState<number>(0);
   const [warehouseId, setWarehouseId] = useState<number>(1);
   const [status, setStatus] = useState<string>('FACTURADA');
+  const [paymentStatus, setPaymentStatus] = useState<string>('PENDIENTE');
   const [notes, setNotes] = useState<string>('');
   const [items, setItems] = useState<{ product_id: number; quantity: number; unit_price: number }[]>([
     { product_id: 0, quantity: 1, unit_price: 0 }
@@ -253,6 +254,7 @@ export const SalesModule: React.FC = () => {
         customer_id: customerId,
         warehouse_id: warehouseId,
         status,
+        payment_status: paymentStatus,
         notes,
         items: validItems
       });
@@ -261,6 +263,7 @@ export const SalesModule: React.FC = () => {
       setIsQuickCustomerOpen(false);
       setItems([{ product_id: 0, quantity: 1, unit_price: 0 }]);
       setNotes('');
+      setPaymentStatus('PENDIENTE');
       loadData();
       if (warehouseId) loadWarehouseStock(warehouseId);
       const currentCust = customers.find(c => c.id === customerId);
@@ -499,7 +502,7 @@ export const SalesModule: React.FC = () => {
             </div>
           )}
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
             <div>
               <div className="flex items-center justify-between mb-1">
                 <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">Cliente</label>
@@ -675,6 +678,35 @@ export const SalesModule: React.FC = () => {
                 <option value="COTIZACION">Cotización Comercial</option>
                 <option value="PEDIDO">Nota de Pedido</option>
               </select>
+            </div>
+
+            {/* Condición de Pago */}
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Condición Pago</label>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setPaymentStatus('PENDIENTE')}
+                  className={`flex-1 py-2.5 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+                    paymentStatus === 'PENDIENTE'
+                      ? 'bg-amber-500 border-amber-500 text-white shadow-md shadow-amber-500/30'
+                      : 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-amber-400'
+                  }`}
+                >
+                  ⏳ Pendiente
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPaymentStatus('PAGADO')}
+                  className={`flex-1 py-2.5 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+                    paymentStatus === 'PAGADO'
+                      ? 'bg-emerald-500 border-emerald-500 text-white shadow-md shadow-emerald-500/30'
+                      : 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-emerald-400'
+                  }`}
+                >
+                  ✅ Pagado
+                </button>
+              </div>
             </div>
           </div>
 

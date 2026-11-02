@@ -223,6 +223,7 @@ class SaleCreate(BaseModel):
     customer_id: int
     warehouse_id: int
     status: Optional[str] = "FACTURADA" # COTIZACION, PEDIDO, FACTURADA
+    payment_status: Optional[str] = "PENDIENTE" # PENDIENTE, PAGADO, PARCIAL
     notes: Optional[str] = None
     items: List[SaleDetailCreate]
 

@@ -248,8 +248,8 @@ def create_sale(db: Session, sale_in: SaleCreate, user_id: int, username: str) -
         subtotal=subtotal,
         tax=tax_total,
         total=total,
-        paid_amount=0.0,
-        payment_status="PENDIENTE",
+        paid_amount=total if (sale_in.payment_status or "PENDIENTE") == "PAGADO" else 0.0,
+        payment_status=sale_in.payment_status or "PENDIENTE",
         notes=sale_in.notes,
         created_by=user_id,
         sale_date=current_time
