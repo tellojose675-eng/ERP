@@ -124,7 +124,6 @@ export const InventoryModule: React.FC = () => {
       setKardex(krdx);
       if (prods.length > 0) {
         setAdjProductId(prods[0].id);
-        setTransProductId(prods[0].id);
       }
       if (cats.length > 0) {
         setNewCategoryId(cats[0].id);
@@ -132,6 +131,19 @@ export const InventoryModule: React.FC = () => {
       if (whs.length > 0) {
         setQuickWhId(whs[0].id);
         setInitialStockWhId(whs[0].id);
+        const originId = whs[0].id;
+        setFromWhId(originId);
+        if (whs.length > 1) {
+          setToWhId(whs[1].id);
+        }
+        const firstAvailableInOrigin = stk.find(item => item.warehouse_id === originId && (item.stock - item.reserved_stock) > 0);
+        if (firstAvailableInOrigin) {
+          setTransProductId(firstAvailableInOrigin.product_id);
+          setTransQty(1);
+        } else if (prods.length > 0) {
+          setTransProductId(prods[0].id);
+          setTransQty(1);
+        }
       }
     } catch (err) {
       console.error(err);
@@ -306,8 +318,58 @@ export const InventoryModule: React.FC = () => {
     }
   };
 
+  // Lógica de transferencia entre almacenes filtrando existencias por Almacén Origen
+  const originStockItems = stockItems.filter(item => item.warehouse_id === fromWhId);
+  const productsWithStockInOrigin = originStockItems.filter(item => (item.stock - item.reserved_stock) > 0);
+  const selectedTransferStockItem = originStockItems.find(item => item.product_id === transProductId);
+  const availableStockInOrigin = selectedTransferStockItem
+    ? Math.max(0, selectedTransferStockItem.stock - selectedTransferStockItem.reserved_stock)
+    : 0;
+
+  const handleFromWarehouseChange = (newFromWhId: number) => {
+    setFromWhId(newFromWhId);
+    const itemsInNewWh = stockItems.filter(item => item.warehouse_id === newFromWhId && (item.stock - item.reserved_stock) > 0);
+    if (itemsInNewWh.length > 0) {
+      setTransProductId(itemsInNewWh[0].product_id);
+      setTransQty(1);
+    } else {
+      setTransProductId(0);
+      setTransQty(1);
+    }
+    // Si destino coincide con origen, cambiar automáticamente a otro almacén
+    if (toWhId === newFromWhId) {
+      const otherWh = warehouses.find(w => w.id !== newFromWhId);
+      if (otherWh) setToWhId(otherWh.id);
+    }
+  };
+
+  const handleTransProductChange = (newProdId: number) => {
+    setTransProductId(newProdId);
+    const item = originStockItems.find(i => i.product_id === newProdId);
+    const avail = item ? Math.max(0, item.stock - item.reserved_stock) : 0;
+    if (transQty > avail) {
+      setTransQty(avail > 0 ? 1 : 1);
+    }
+  };
+
   const handleTransfer = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (fromWhId === toWhId) {
+      alert('El almacén de origen y el almacén de destino deben ser diferentes.');
+      return;
+    }
+    if (!transProductId || availableStockInOrigin <= 0) {
+      alert('Por favor selecciona un producto que tenga existencias disponibles en el almacén origen.');
+      return;
+    }
+    if (transQty <= 0) {
+      alert('La cantidad a transferir debe ser mayor a 0.');
+      return;
+    }
+    if (transQty > availableStockInOrigin) {
+      alert(`La cantidad solicitada (${transQty}) supera el stock disponible en el almacén origen (${availableStockInOrigin} UND).`);
+      return;
+    }
     try {
       await api.transferStock({
         product_id: transProductId,
@@ -315,8 +377,8 @@ export const InventoryModule: React.FC = () => {
         to_warehouse_id: toWhId,
         quantity: transQty
       });
-      alert('Transferencia completada');
-      loadAll();
+      alert(`Transferencia de ${transQty} unidad(es) realizada con éxito.`);
+      await loadAll();
     } catch (err: any) {
       alert(err.message || 'Error en transferencia');
     }
@@ -1064,29 +1126,20 @@ export const InventoryModule: React.FC = () => {
           {/* Transferencia */}
           <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs transition-colors">
             <h2 className="text-base font-bold text-slate-900 dark:text-white mb-1">Transferencia entre Almacenes</h2>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">Movimiento físico o lógico de mercancías con doble asiento en Kardex.</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">Selecciona primero el almacén origen para ver sus existencias reales y transferirlas a otro almacén.</p>
 
-            <form onSubmit={handleTransfer} className="space-y-3">
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Producto</label>
-                <select
-                  value={transProductId}
-                  onChange={(e) => setTransProductId(Number(e.target.value))}
-                  className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-slate-100"
-                >
-                  {products.map(p => (
-                    <option key={p.id} value={p.id}>{p.code} - {p.name}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="grid grid-cols-2 gap-2">
+            <form onSubmit={handleTransfer} className="space-y-4">
+              {/* Paso 1: Selección de Almacenes */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3.5 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200/80 dark:border-slate-700/60">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Almacén Origen</label>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1.5">
+                    <span className="w-5 h-5 rounded-full bg-sky-600 text-white inline-flex items-center justify-center text-[10px] font-mono">1</span>
+                    Almacén Origen (Salida)
+                  </label>
                   <select
                     value={fromWhId}
-                    onChange={(e) => setFromWhId(Number(e.target.value))}
-                    className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-slate-100"
+                    onChange={(e) => handleFromWarehouseChange(Number(e.target.value))}
+                    className="w-full p-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-slate-900 dark:text-slate-100"
                   >
                     {warehouses.map(w => (
                       <option key={w.id} value={w.id}>{w.name}</option>
@@ -1094,33 +1147,111 @@ export const InventoryModule: React.FC = () => {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Almacén Destino</label>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1.5">
+                    <span className="w-5 h-5 rounded-full bg-indigo-600 text-white inline-flex items-center justify-center text-[10px] font-mono">2</span>
+                    Almacén Destino (Entrada)
+                  </label>
                   <select
                     value={toWhId}
                     onChange={(e) => setToWhId(Number(e.target.value))}
-                    className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-slate-100"
+                    className="w-full p-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-slate-900 dark:text-slate-100"
                   >
                     {warehouses.map(w => (
-                      <option key={w.id} value={w.id}>{w.name}</option>
+                      <option key={w.id} value={w.id} disabled={w.id === fromWhId}>
+                        {w.name} {w.id === fromWhId ? '(Mismo que origen)' : ''}
+                      </option>
                     ))}
                   </select>
                 </div>
               </div>
 
+              {/* Paso 2: Producto disponible en el almacén origen */}
               <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Cantidad a Transferir</label>
-                <input
-                  type="number"
-                  min="1"
-                  value={transQty}
-                  onChange={(e) => setTransQty(Number(e.target.value))}
-                  className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-slate-100"
-                />
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                    <span className="w-5 h-5 rounded-full bg-emerald-600 text-white inline-flex items-center justify-center text-[10px] font-mono">3</span>
+                    Producto en Almacén Origen
+                  </label>
+                  <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+                    {productsWithStockInOrigin.length} {productsWithStockInOrigin.length === 1 ? 'producto disponible' : 'productos disponibles'}
+                  </span>
+                </div>
+
+                {productsWithStockInOrigin.length === 0 ? (
+                  <div className="p-3.5 bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 rounded-xl text-xs text-amber-800 dark:text-amber-300 flex items-center gap-2">
+                    <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                    <span>
+                      Este almacén origen no tiene productos con existencias disponibles para transferir. Selecciona otro almacén origen o realiza una compra/ajuste primero.
+                    </span>
+                  </div>
+                ) : (
+                  <>
+                    <select
+                      value={transProductId}
+                      onChange={(e) => handleTransProductChange(Number(e.target.value))}
+                      className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-900 dark:text-slate-100"
+                    >
+                      {productsWithStockInOrigin.map(item => {
+                        const avail = Math.max(0, item.stock - item.reserved_stock);
+                        return (
+                          <option key={item.product_id} value={item.product_id}>
+                            {item.product_code} — {item.product_name} (Stock disponible: {avail} UND)
+                          </option>
+                        );
+                      })}
+                    </select>
+
+                    {/* Stock disponible del producto seleccionado */}
+                    {selectedTransferStockItem && (
+                      <div className="flex items-center justify-between mt-2 p-2.5 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200 dark:border-slate-700 text-xs">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-slate-500 dark:text-slate-400 text-[11px]">Existencia en origen:</span>
+                          <StockQuantityPill stock={availableStockInOrigin} unit="UND" />
+                          <StockStatusBadge stock={availableStockInOrigin} size="sm" />
+                        </div>
+                        {availableStockInOrigin > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => setTransQty(availableStockInOrigin)}
+                            className="text-[11px] font-bold text-sky-600 dark:text-sky-400 hover:underline cursor-pointer"
+                          >
+                            Transferir todo ({availableStockInOrigin})
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+
+              {/* Paso 3: Cantidad a Transferir */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1.5">
+                  <span className="w-5 h-5 rounded-full bg-violet-600 text-white inline-flex items-center justify-center text-[10px] font-mono">4</span>
+                  Cantidad a Transferir
+                </label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    min="1"
+                    max={availableStockInOrigin > 0 ? availableStockInOrigin : 1}
+                    value={transQty}
+                    onChange={(e) => setTransQty(Math.max(1, Number(e.target.value)))}
+                    disabled={productsWithStockInOrigin.length === 0}
+                    className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-slate-100 disabled:opacity-50"
+                  />
+                  {availableStockInOrigin > 0 && (
+                    <span className="text-xs text-slate-500 dark:text-slate-400 font-mono shrink-0">
+                      / máx {availableStockInOrigin} UND
+                    </span>
+                  )}
+                </div>
               </div>
 
               <button
                 type="submit"
-                className="w-full mt-2 py-2.5 bg-sky-600 hover:bg-sky-700 text-white rounded-xl text-xs font-semibold shadow-md shadow-sky-600/20 transition-colors"
+                disabled={productsWithStockInOrigin.length === 0 || fromWhId === toWhId || transQty <= 0}
+                className="w-full mt-2 py-2.5 bg-sky-600 hover:bg-sky-700 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-xl text-xs font-semibold shadow-md shadow-sky-600/20 transition-all cursor-pointer"
               >
                 Ejecutar Transferencia Transaccional
               </button>
