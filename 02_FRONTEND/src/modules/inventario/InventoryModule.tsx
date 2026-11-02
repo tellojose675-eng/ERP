@@ -1132,8 +1132,7 @@ export const InventoryModule: React.FC = () => {
               {/* Paso 1: Selección de Almacenes */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3.5 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200/80 dark:border-slate-700/60">
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1.5">
-                    <span className="w-5 h-5 rounded-full bg-sky-600 text-white inline-flex items-center justify-center text-[10px] font-mono">1</span>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                     Almacén Origen (Salida)
                   </label>
                   <select
@@ -1147,8 +1146,7 @@ export const InventoryModule: React.FC = () => {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1.5">
-                    <span className="w-5 h-5 rounded-full bg-indigo-600 text-white inline-flex items-center justify-center text-[10px] font-mono">2</span>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                     Almacén Destino (Entrada)
                   </label>
                   <select
@@ -1165,11 +1163,10 @@ export const InventoryModule: React.FC = () => {
                 </div>
               </div>
 
-              {/* Paso 2: Producto disponible en el almacén origen */}
+              {/* Producto disponible en el almacén origen */}
               <div>
                 <div className="flex items-center justify-between mb-1">
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                    <span className="w-5 h-5 rounded-full bg-emerald-600 text-white inline-flex items-center justify-center text-[10px] font-mono">3</span>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
                     Producto en Almacén Origen
                   </label>
                   <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
@@ -1224,10 +1221,9 @@ export const InventoryModule: React.FC = () => {
                 )}
               </div>
 
-              {/* Paso 3: Cantidad a Transferir */}
+              {/* Cantidad a Transferir */}
               <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1.5">
-                  <span className="w-5 h-5 rounded-full bg-violet-600 text-white inline-flex items-center justify-center text-[10px] font-mono">4</span>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                   Cantidad a Transferir
                 </label>
                 <div className="flex items-center gap-2">
